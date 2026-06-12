@@ -41,7 +41,7 @@ struct SwitcherView: View {
                                    isSelected: index == switcher.selectedIndex)
                             .id(window.id)
                             .onHover { hovering in
-                                if hovering { switcher.select(index: index) }
+                                if hovering { switcher.hoverSelect(index: index) }
                             }
                             .onTapGesture {
                                 switcher.select(index: index)

@@ -27,6 +27,12 @@ final class BrowserTabService {
 
     private(set) var cached: [BrowserTab] = []
     private let queue = DispatchQueue(label: "com.vorssaint.utils.browser-tabs", qos: .userInitiated)
+    /// Set after the first switcher-driven sweep. Warming sweeps only run after
+    /// it, so the Automation consent prompt never appears before the user has
+    /// actually used the switcher.
+    private var hasSweptOnce = false
+    private var warmingObserver: NSObjectProtocol?
+    private var warmingDebounce: DispatchWorkItem?
 
     private enum Dialect {
         case safari, chromium
@@ -80,10 +86,46 @@ final class BrowserTabService {
                 tabs.append(contentsOf: Self.listTabs(bundleId: bundleId, pid: pid, dialect: dialect))
             }
             DispatchQueue.main.async {
+                self.hasSweptOnce = true
                 self.cached = tabs
                 completion(tabs)
             }
         }
+    }
+
+    // MARK: - Cache warming
+
+    /// Keeps the cache fresh by re-sweeping shortly after the user switches
+    /// apps (the moment tab state usually changes). That way the very first
+    /// quick ⌘Tab already knows the browser's tabs — no second attempt needed.
+    func beginWarming() {
+        guard warmingObserver == nil else { return }
+        warmingObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.scheduleWarmSweep()
+        }
+    }
+
+    func endWarming() {
+        if let warmingObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(warmingObserver)
+        }
+        warmingObserver = nil
+        warmingDebounce?.cancel()
+        warmingDebounce = nil
+    }
+
+    private func scheduleWarmSweep() {
+        guard isEnabled, hasSweptOnce else { return }
+        warmingDebounce?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            self?.refresh { _ in }
+        }
+        warmingDebounce = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
     }
 
     /// Makes `tab` the current tab of its window. Runs the script off-main;
@@ -117,7 +159,12 @@ final class BrowserTabService {
         }
         queue.async {
             _ = Self.runAppleScript(source)
-            DispatchQueue.main.async(execute: completion)
+            DispatchQueue.main.async {
+                completion()
+                // The activation flipped which tab is current — re-sweep so the
+                // next quick ⌘Tab toggles back correctly.
+                self.refresh { _ in }
+            }
         }
     }
 
