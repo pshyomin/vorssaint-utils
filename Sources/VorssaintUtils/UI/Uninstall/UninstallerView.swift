@@ -1,9 +1,9 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The uninstaller window: drop an app (or pick one), review the leftover files
-/// it found with their sizes, then move the selected ones to the Trash and see
-/// the space recovered.
+/// The uninstaller, embedded as a Settings page: drop an app (or pick one),
+/// review the leftover files it found with their sizes, then move the selected
+/// ones to the Trash and see the space recovered.
 struct UninstallerView: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var uninstaller = AppUninstaller.shared
@@ -11,11 +11,8 @@ struct UninstallerView: View {
     @State private var dropTargeted = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(minWidth: 540, idealWidth: 540, minHeight: 580, idealHeight: 580)
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -214,14 +211,10 @@ struct UninstallerView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
-            HStack(spacing: 12) {
-                Button(l10n.s.uninstallerAnother) { uninstaller.reset() }
-                    .controlSize(.large)
-                Button(l10n.s.uninstallerClose) { appDelegate()?.closeUninstallerWindow() }
-                    .controlSize(.large)
-                    .buttonStyle(.borderedProminent)
-            }
-            .padding(.top, 6)
+            Button(l10n.s.uninstallerAnother) { uninstaller.reset() }
+                .controlSize(.large)
+                .buttonStyle(.borderedProminent)
+                .padding(.top, 6)
             Spacer()
         }
         .padding(28)

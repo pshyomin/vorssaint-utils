@@ -9,16 +9,24 @@ enum SettingsPage: Hashable {
     case about
 }
 
+/// Selects the visible Settings page; the menu bar uses it to open Settings
+/// directly on a specific page.
+final class SettingsRouter: ObservableObject {
+    static let shared = SettingsRouter()
+    @Published var page: SettingsPage = .general
+    private init() {}
+}
+
 /// System-Settings-style window: a sidebar of pages on the left, the selected
 /// page on the right. Scales cleanly as features are added, and gives each
 /// feature a page of its own with room for examples and advanced options.
 struct SettingsView: View {
     @ObservedObject private var l10n = L10n.shared
-    @State private var page: SettingsPage = .general
+    @ObservedObject private var router = SettingsRouter.shared
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $page) {
+            List(selection: $router.page) {
                 Label(l10n.s.tabGeneral, systemImage: "gearshape").tag(SettingsPage.general)
                 Label(l10n.s.tabEnergy, systemImage: "bolt.fill").tag(SettingsPage.energy)
 
@@ -45,14 +53,14 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var detail: some View {
-        switch page {
+        switch router.page {
         case .general: GeneralSettings()
         case .energy: EnergySettings()
         case .mouse: MouseSettings()
         case .switcher: SwitcherSettings()
         case .cutPaste: CutPasteSettings()
         case .autoQuit: AutoQuitSettings()
-        case .uninstaller: UninstallerSettings()
+        case .uninstaller: UninstallerView()
         case .shelf: ShelfSettings()
         case .about: AboutSettings()
         }
@@ -215,10 +223,6 @@ struct EnergySettings: View {
                     Text(l10n.s.hours8).tag(480)
                     Text(l10n.s.indefinite).tag(0)
                 }
-                Toggle(l10n.s.keepDisplayOn, isOn: $awake.keepDisplayOn)
-                Text(l10n.s.keepDisplayCaption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             Section(l10n.s.batteryProtectionSection) {
                 Picker(l10n.s.batteryDisableBelow, selection: $batteryLimit) {
@@ -274,9 +278,6 @@ struct MouseSettings: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(l10n.s.scrollTrackpadNote)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(l10n.s.scrollLiveNote)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

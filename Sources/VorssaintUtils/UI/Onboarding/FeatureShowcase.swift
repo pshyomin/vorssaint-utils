@@ -58,12 +58,13 @@ struct WhatsNewIntroStep: View {
 // MARK: - Scaffold
 
 /// One feature page in onboarding: a hero illustration, the benefit, how to use
-/// it, an enable toggle and an optional footer (a permission row, etc.).
+/// it, an optional enable toggle and an optional footer (a permission row,
+/// etc.). Tools that need no activation (the uninstaller) pass no toggle.
 struct ShowcaseScaffold<Hero: View, Footer: View>: View {
     let title: String
     let benefit: String
-    let enableLabel: String
-    @Binding var enabled: Bool
+    let enableLabel: String?
+    let enabled: Binding<Bool>?
     let howTo: [HowToRow]
     let onToggle: () -> Void
     let hero: Hero
@@ -71,16 +72,16 @@ struct ShowcaseScaffold<Hero: View, Footer: View>: View {
 
     init(title: String,
          benefit: String,
-         enableLabel: String,
-         enabled: Binding<Bool>,
+         enableLabel: String? = nil,
+         enabled: Binding<Bool>? = nil,
          howTo: [HowToRow],
-         onToggle: @escaping () -> Void,
+         onToggle: @escaping () -> Void = {},
          @ViewBuilder hero: () -> Hero,
          @ViewBuilder footer: () -> Footer) {
         self.title = title
         self.benefit = benefit
         self.enableLabel = enableLabel
-        self._enabled = enabled
+        self.enabled = enabled
         self.howTo = howTo
         self.onToggle = onToggle
         self.hero = hero()
@@ -107,17 +108,21 @@ struct ShowcaseScaffold<Hero: View, Footer: View>: View {
 
                 Spacer(minLength: 4)
 
-                VStack(alignment: .leading, spacing: 8) {
-                    Toggle(enableLabel, isOn: $enabled)
-                        .toggleStyle(.switch)
-                        .onChange(of: enabled) { _, _ in onToggle() }
+                if let enabled, let enableLabel {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(enableLabel, isOn: enabled)
+                            .toggleStyle(.switch)
+                            .onChange(of: enabled.wrappedValue) { _, _ in onToggle() }
+                        footer
+                    }
+                    .padding(12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.primary.opacity(0.05))
+                    )
+                } else {
                     footer
                 }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.primary.opacity(0.05))
-                )
             }
             .padding(20)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -196,18 +201,14 @@ struct AutoQuitShowcaseStep: View {
 
 struct UninstallerShowcaseStep: View {
     @ObservedObject private var l10n = L10n.shared
-    @AppStorage(DefaultsKey.uninstallerEnabled) private var enabled = false
 
     var body: some View {
         ShowcaseScaffold(
             title: l10n.s.uninstallerName,
             benefit: l10n.s.uninstallerEnableCaption,
-            enableLabel: l10n.s.uninstallerEnable,
-            enabled: $enabled,
             howTo: [HowToRow(keys: nil, text: l10n.s.uninstallerStep1),
                     HowToRow(keys: nil, text: l10n.s.uninstallerStep2),
                     HowToRow(keys: nil, text: l10n.s.uninstallerStep3)],
-            onToggle: {},
             hero: { UninstallerHero() },
             footer: { EmptyView() }
         )
