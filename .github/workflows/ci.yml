@@ -10,7 +10,7 @@ jobs:
     name: Build & selftest
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up signing
         env:
@@ -28,7 +28,7 @@ jobs:
         run: ./Tools/make-dmg.sh
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: VorssaintUtils-dmg
           path: dist/*.dmg
