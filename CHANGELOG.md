@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.4.4] — 2026-06-12
+
+Stability pass over the whole project — same behavior, fewer ways to fail.
+
+### Fixed
+- **Self-update is fail-safe**: the new version is fully copied next to the app
+  before the old one is removed, so a failed download/copy can never leave you
+  without an app
+- **Uninstaller**: scan results landing after you picked a different app are
+  discarded (files of app A can no longer be listed under app B); display names
+  only strip a trailing ".app"
+- **Cut & paste**: an unexpected Accessibility value can no longer crash the
+  app from inside the keyboard tap, and a cut superseded by a copy elsewhere
+  now dismisses its HUD instead of lingering
+- **Shelf**: an image dragged from a web page is kept as an image, not as a
+  link to the page
+
+### Changed
+- Periodic timers gained tolerances so macOS can coalesce wakeups (less power)
+- Internal dedup: one screen-under-mouse helper and one HUD backdrop shared by
+  all floating panels; CI workflows moved to the actions' Node 24 lines
+
 ## [2.4.3] — 2026-06-12
 
 ### Changed
