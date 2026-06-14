@@ -86,14 +86,17 @@ final class ShelfService: ObservableObject {
             var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
                                      eventKind: UInt32(kEventHotKeyPressed))
             InstallEventHandler(GetEventDispatcherTarget(), { _, event, userData -> OSStatus in
-                guard let userData else { return noErr }
+                guard let userData else { return OSStatus(eventNotHandledErr) }
                 var id = EventHotKeyID()
                 if let event {
                     GetEventParameter(event, EventParamName(kEventParamDirectObject),
                                       EventParamType(typeEventHotKeyID), nil,
                                       MemoryLayout<EventHotKeyID>.size, nil, &id)
                 }
-                guard id.id == 2 else { return noErr }
+                // Not our hotkey: hand it back so the keep-awake handler on the
+                // same dispatch target still receives ⌃⌥⌘K. Returning noErr would
+                // swallow it.
+                guard id.id == 2 else { return OSStatus(eventNotHandledErr) }
                 let service = Unmanaged<ShelfService>.fromOpaque(userData).takeUnretainedValue()
                 DispatchQueue.main.async { service.toggle() }
                 return noErr

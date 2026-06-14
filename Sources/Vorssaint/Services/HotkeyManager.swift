@@ -24,14 +24,17 @@ final class HotkeyManager {
             // The dispatcher delivers every registered hotkey to every handler,
             // so filter by id — other features (e.g. the shelf) register their own.
             InstallEventHandler(GetEventDispatcherTarget(), { _, event, userData -> OSStatus in
-                guard let userData else { return noErr }
+                guard let userData else { return OSStatus(eventNotHandledErr) }
                 var hotKeyID = EventHotKeyID()
                 if let event {
                     GetEventParameter(event, EventParamName(kEventParamDirectObject),
                                       EventParamType(typeEventHotKeyID), nil,
                                       MemoryLayout<EventHotKeyID>.size, nil, &hotKeyID)
                 }
-                guard hotKeyID.id == 1 else { return noErr }
+                // Not our hotkey: hand it back so the dispatcher keeps walking the
+                // handler chain (the shelf installs its own handler on the same
+                // target). Returning noErr here would swallow the shelf's key.
+                guard hotKeyID.id == 1 else { return OSStatus(eventNotHandledErr) }
                 let manager = Unmanaged<HotkeyManager>.fromOpaque(userData).takeUnretainedValue()
                 DispatchQueue.main.async { manager.onActivate?() }
                 return noErr

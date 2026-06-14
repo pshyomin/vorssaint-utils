@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.7.3] - 2026-06-14
+
+### Fixed
+- The ⌃⌥⌘K shortcut toggles "Keep awake" reliably again. When the temporary shelf
+  was also enabled, its global shortcut could swallow the ⌃⌥⌘K key press, so
+  nothing happened; the two shortcuts no longer interfere.
+
 ## [2.7.2] - 2026-06-14
 
 ### Fixed
