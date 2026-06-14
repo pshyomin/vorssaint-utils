@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.9.0] - 2026-06-14
+
+### Added
+- **Switcher option to merge an app's tabs.** A new setting makes the window
+  switcher treat the tabs of one window as a single entry, so apps like Finder
+  and Terminal with many tabs no longer flood the switcher. It is off by default;
+  when on, only the active tab of each tabbed window is shown.
+
 ## [2.8.1] - 2026-06-14
 
 ### Fixed

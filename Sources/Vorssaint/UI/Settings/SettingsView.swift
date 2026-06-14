@@ -299,6 +299,7 @@ struct SwitcherSettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var permissions = Permissions.shared
     @AppStorage(DefaultsKey.switcherEnabled) private var switcherEnabled = true
+    @AppStorage(DefaultsKey.switcherMergeTabs) private var switcherMergeTabs = false
 
     var body: some View {
         Form {
@@ -311,6 +312,12 @@ struct SwitcherSettings: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text(l10n.s.switcherUsageHint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Toggle(l10n.s.switcherMergeTabs, isOn: $switcherMergeTabs)
+                    .disabled(!switcherEnabled)
+                Text(l10n.s.switcherMergeTabsCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

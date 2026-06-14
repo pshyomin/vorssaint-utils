@@ -62,6 +62,9 @@ enum WindowEnumerator {
                                    isOnScreen: isOnScreen,
                                    frame: frame))
         }
+        if UserDefaults.standard.bool(forKey: DefaultsKey.switcherMergeTabs) {
+            windows = mergeTabGroups(windows)
+        }
         return orderByActivation(windows)
     }
 
@@ -77,5 +80,30 @@ enum WindowEnumerator {
             let rankR = tracker.rank(of: rhs.element.pid)
             return rankL != rankR ? rankL < rankR : lhs.offset < rhs.offset
         }.map(\.element)
+    }
+
+    /// Collapses the tabs of one tabbed window into a single entry. The tabs of a
+    /// native tab group (Finder, Terminal, and the like) are separate windows
+    /// that share the exact same frame, with only the active tab on screen.
+    /// Keeping one representative per (app, frame) and preferring the on-screen
+    /// tab removes the duplicate tab entries that otherwise flood the switcher.
+    private static func mergeTabGroups(_ windows: [SwitcherItem]) -> [SwitcherItem] {
+        var indexByKey: [String: Int] = [:]
+        var merged: [SwitcherItem] = []
+        for window in windows {
+            let f = window.frame
+            let key = "\(window.pid):\(Int(f.origin.x.rounded())):\(Int(f.origin.y.rounded())):\(Int(f.width.rounded())):\(Int(f.height.rounded()))"
+            if let index = indexByKey[key] {
+                // Same app, same frame: a sibling tab. Keep the on-screen one as
+                // the representative, so its title and thumbnail are the active tab.
+                if window.isOnScreen && !merged[index].isOnScreen {
+                    merged[index] = window
+                }
+            } else {
+                indexByKey[key] = merged.count
+                merged.append(window)
+            }
+        }
+        return merged
     }
 }

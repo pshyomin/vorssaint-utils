@@ -170,6 +170,8 @@ struct Strings {
     let switcherEnableCaption: String
     let switcherUsageHint: String
     let switcherNoWindows: String
+    let switcherMergeTabs: String
+    let switcherMergeTabsCaption: String
 
     // MARK: Feature — cut & paste in Finder
     let cutPasteName: String
@@ -451,6 +453,8 @@ extension Strings {
         switcherEnableCaption: "Troque de janela vendo miniaturas reais, inclusive entre várias janelas do mesmo app.",
         switcherUsageHint: "Segure ⌘ e toque Tab para navegar; solte para ativar a janela. Shift ou ← volta; Q fecha o app selecionado; Esc cancela.",
         switcherNoWindows: "Nenhuma janela aberta",
+        switcherMergeTabs: "Tratar as abas de um app como uma só janela",
+        switcherMergeTabsCaption: "Apps como Finder e Terminal deixam de encher o alternador com cada aba; aparece só a aba ativa de cada janela.",
 
         cutPasteName: "Recortar e colar",
         cutPasteEnable: "Recortar e colar arquivos no Finder",
@@ -723,6 +727,8 @@ extension Strings {
         switcherEnableCaption: "Switch windows with real thumbnails, including between multiple windows of the same app.",
         switcherUsageHint: "Hold ⌘ and tap Tab to navigate; release to activate the window. Shift or ← goes back; Q quits the selected app; Esc cancels.",
         switcherNoWindows: "No open windows",
+        switcherMergeTabs: "Treat an app's tabs as a single window",
+        switcherMergeTabsCaption: "Apps like Finder and Terminal stop flooding the switcher with every tab; only the active tab of each window shows.",
 
         cutPasteName: "Cut & paste",
         cutPasteEnable: "Cut & paste files in Finder",
