@@ -1,5 +1,11 @@
 name: Release
 
+# Push a tag (vX.Y.Z) and CI does the whole release: build, sign (Developer ID +
+# hardened runtime), notarize the app and the DMG, staple both, verify, and
+# publish the GitHub release with the styled DMG. Releases are NOT cut locally, so
+# nothing ever has to enable/disable a workflow. If a run hits a transient
+# failure, re-run it with `gh run rerun <run-id>` (or from the Actions tab); no
+# need to retag.
 on:
   push:
     tags: ["v*"]
@@ -11,6 +17,7 @@ jobs:
   release:
     name: Build & publish DMG
     runs-on: macos-15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
@@ -43,11 +50,31 @@ jobs:
           NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
         run: ./Tools/notarize.sh dist/*.dmg
 
+      - name: Verify notarization
+        run: |
+          DMG=$(ls dist/*.dmg | head -1)
+          xcrun stapler validate "$DMG"
+          MP=$(hdiutil attach -nobrowse -readonly "$DMG" | grep -oE '/Volumes/[^ ]+.*' | tail -1)
+          spctl -a -t exec -vv "$MP/Vorssaint.app" 2>&1 | tee /tmp/spctl.txt
+          grep -q "source=Notarized Developer ID" /tmp/spctl.txt
+          xcrun stapler validate "$MP/Vorssaint.app"
+          hdiutil detach "$MP" >/dev/null 2>&1 || true
+
+      - name: Release notes from CHANGELOG
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          {
+            echo "NOTES<<__VRSS_EOF__"
+            awk -v hdr="## [$VERSION]" 'index($0,hdr)==1{g=1;next} /^## \[/&&g{exit} g{print}' CHANGELOG.md
+            echo ""
+            echo "Signed with an Apple Developer ID and notarized by Apple, so it downloads and opens normally. Requires macOS 14 or later. Open the .dmg below and drag Vorssaint to Applications."
+            echo "__VRSS_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
           files: dist/*.dmg
-          generate_release_notes: true
-          body: |
-            Vorssaint is signed with a Developer ID and notarized by Apple, so it
-            opens normally. Drag it to Applications and launch it.
+          body: ${{ steps.notes.outputs.NOTES }}
+          make_latest: true
