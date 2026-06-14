@@ -26,16 +26,18 @@ macOS re-prompts for Accessibility/Screen Recording after each rebuild. Run
 ./Tools/setup-signing.sh
 ```
 
-once to create a free, self-signed identity in a dedicated keychain. `build.sh`
-then signs with it automatically, giving the bundle a constant designated
-requirement so granted permissions persist across your local builds. (The
-identity keeps its original name, `Vorssaint Utils Signing`: it is the fixed
-lookup key `build.sh` matches, and the released app's designated requirement is
-pinned to that certificate. Renaming it would change the requirement and drop
-every user's granted permissions, so it stays as is. It is never shown outside
-the keychain.) It does not affect Gatekeeper (still unnotarized). Official
-releases are signed in CI with a shared certificate held in the repo secrets
-`SIGNING_CERT_P12` / `SIGNING_CERT_PASSWORD`.
+once to create a free, self-signed identity (`Vorssaint Utils Signing`) in a
+dedicated keychain. `build.sh` then signs local builds with it, giving them a
+constant designated requirement so granted permissions persist across rebuilds.
+It is a local convenience only and is never shown outside the keychain.
+
+Official releases are different: CI signs them with an Apple **Developer ID**
+(from the repo secrets `SIGNING_CERT_P12` / `SIGNING_CERT_PASSWORD`) and
+**notarizes** and staples them (`Tools/notarize.sh`, secrets `NOTARY_API_KEY_P8`
+/ `NOTARY_KEY_ID` / `NOTARY_ISSUER_ID`), so downloads open with no Gatekeeper
+warning. `build.sh` prefers the Developer ID identity when present, with the
+hardened runtime and `Resources/Vorssaint.entitlements`, and falls back to the
+self-signed identity, then ad-hoc.
 
 ## Project layout
 

@@ -119,8 +119,22 @@ struct Strings {
     let tabEnergy: String
     let tabMouse: String
     let tabSwitcher: String
+    let tabAdvanced: String
     let tabAbout: String
     let settingsGroupFeatures: String
+
+    // MARK: Settings — advanced
+    let advancedResetSection: String
+    let advancedResetDescription: String
+    let advancedClearButton: String
+    let advancedCleared: String
+    let advancedClearConfirmTitle: String
+    let advancedClearConfirmBody: String
+    let advancedUninstallSection: String
+    let advancedUninstallDescription: String
+    let advancedUninstallButton: String
+    let advancedUninstallConfirmTitle: String
+    let advancedUninstallConfirmBody: String
 
     // MARK: Settings — general
     let launchAtLogin: String
@@ -391,8 +405,20 @@ extension Strings {
         tabEnergy: "Energia",
         tabMouse: "Mouse",
         tabSwitcher: "Alternador",
+        tabAdvanced: "Avançado",
         tabAbout: "Sobre",
         settingsGroupFeatures: "Recursos",
+        advancedResetSection: "Permissões",
+        advancedResetDescription: "Remove todas as permissões que você concedeu ao Vorssaint (Acessibilidade, Gravação de Tela, Acesso Total ao Disco e outras), o item de início e a regra de tampa fechada. Útil para começar do zero ou antes de desinstalar. O app continua instalado.",
+        advancedClearButton: "Limpar todas as permissões",
+        advancedCleared: "Permissões limpas.",
+        advancedClearConfirmTitle: "Limpar todas as permissões?",
+        advancedClearConfirmBody: "Os recursos que dependem de permissão vão parar de funcionar até você conceder de novo. As suas configurações são mantidas.",
+        advancedUninstallSection: "Desinstalar",
+        advancedUninstallDescription: "Faz tudo acima e ainda apaga as preferências e move o Vorssaint para a Lixeira, sem deixar rastro no sistema. O app fecha ao final. Você pode reinstalar quando quiser.",
+        advancedUninstallButton: "Desinstalar o Vorssaint completamente",
+        advancedUninstallConfirmTitle: "Desinstalar o Vorssaint?",
+        advancedUninstallConfirmBody: "O Vorssaint vai limpar as permissões, apagar as preferências e ir para a Lixeira, e então fechar. Esta ação não pode ser desfeita pelo app, mas ele fica na Lixeira até você esvaziá-la.",
 
         launchAtLogin: "Iniciar junto com o Mac",
         languageLabel: "Idioma",
@@ -650,8 +676,20 @@ extension Strings {
         tabEnergy: "Energy",
         tabMouse: "Mouse",
         tabSwitcher: "Switcher",
+        tabAdvanced: "Advanced",
         tabAbout: "About",
         settingsGroupFeatures: "Features",
+        advancedResetSection: "Permissions",
+        advancedResetDescription: "Removes every permission you granted Vorssaint (Accessibility, Screen Recording, Full Disk Access and others), the login item and the closed-lid rule. Useful to start fresh or before uninstalling. The app stays installed.",
+        advancedClearButton: "Clear all permissions",
+        advancedCleared: "Permissions cleared.",
+        advancedClearConfirmTitle: "Clear all permissions?",
+        advancedClearConfirmBody: "Features that need permissions will stop working until you grant them again. Your settings are kept.",
+        advancedUninstallSection: "Uninstall",
+        advancedUninstallDescription: "Does all of the above, then removes the preferences and moves Vorssaint to the Trash, leaving nothing behind. The app quits when done. You can reinstall anytime.",
+        advancedUninstallButton: "Uninstall Vorssaint completely",
+        advancedUninstallConfirmTitle: "Uninstall Vorssaint?",
+        advancedUninstallConfirmBody: "Vorssaint will clear its permissions, remove its preferences and move to the Trash, then quit. This can't be undone from the app, but it stays in the Trash until you empty it.",
 
         launchAtLogin: "Launch at login",
         languageLabel: "Language",

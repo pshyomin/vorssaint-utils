@@ -6,7 +6,7 @@ import SwiftUI
 enum SettingsPage: Hashable {
     case general, energy
     case mouse, switcher, cutPaste, autoQuit, uninstaller, shelf
-    case about
+    case advanced, about
 }
 
 /// Selects the visible Settings page; the menu bar uses it to open Settings
@@ -39,6 +39,7 @@ struct SettingsView: View {
                     Label(l10n.s.shelfName, systemImage: "tray.full").tag(SettingsPage.shelf)
                 }
 
+                Label(l10n.s.tabAdvanced, systemImage: "wrench.and.screwdriver").tag(SettingsPage.advanced)
                 Label(l10n.s.tabAbout, systemImage: "info.circle").tag(SettingsPage.about)
             }
             .listStyle(.sidebar)
@@ -62,6 +63,7 @@ struct SettingsView: View {
         case .autoQuit: AutoQuitSettings()
         case .uninstaller: UninstallerView()
         case .shelf: ShelfSettings()
+        case .advanced: AdvancedSettings()
         case .about: AboutSettings()
         }
     }

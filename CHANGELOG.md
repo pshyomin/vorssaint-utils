@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.7.0] - 2026-06-14
+
+### Added
+- **Advanced settings page** with two clean-up tools, each behind a confirmation:
+  - **Clear all permissions** resets every permission you granted Vorssaint
+    (Accessibility, Screen Recording, Full Disk Access and the rest) and removes
+    its login item and closed-lid rule, leaving the app in place. Good for a fresh
+    start or before uninstalling.
+  - **Uninstall Vorssaint completely** does all of that, removes the preferences,
+    moves the app to the Trash and quits, leaving nothing behind. You can
+    reinstall anytime.
+
 ## [2.6.0] - 2026-06-14
 
 ### Changed
