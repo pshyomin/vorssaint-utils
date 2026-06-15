@@ -35,9 +35,13 @@ enum SystemInfo {
     static func memoryUsage() -> (used: UInt64, total: UInt64)? {
         var stats = vm_statistics64()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.stride / MemoryLayout<integer_t>.stride)
+        // mach_host_self() returns a send right the caller owns; release it or each
+        // call leaks a mach port (this runs every couple of seconds while sampling).
+        let host = mach_host_self()
+        defer { mach_port_deallocate(mach_task_self_, host) }
         let kr = withUnsafeMutablePointer(to: &stats) { ptr in
             ptr.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
-                host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
+                host_statistics64(host, HOST_VM_INFO64, $0, &count)
             }
         }
         guard kr == KERN_SUCCESS else { return nil }

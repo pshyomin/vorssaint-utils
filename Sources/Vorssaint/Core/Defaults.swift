@@ -22,13 +22,54 @@ enum DefaultsKey {
     static let autoQuitExceptions = "autoQuitExceptions"  // [bundle id] kept running
     static let shelfEnabled = "shelfEnabled"
     static let shelfShakeToOpen = "shelfShakeToOpen"
+
+    // System monitor — live metrics shown next to the menu bar icon (opt-in).
+    static let menuBarCPU = "menuBarCPU"
+    static let menuBarGPU = "menuBarGPU"
+    static let menuBarMemory = "menuBarMemory"
+    static let menuBarNetwork = "menuBarNetwork"
+    static let menuBarPower = "menuBarPower"
+    static let menuBarMemoryStyle = "menuBarMemoryStyle"   // dot | percent | both
+    static let monitorInterval = "monitorIntervalSeconds"  // sampling cadence: 1/2/5
+    // System monitor — which blocks appear in the panel.
+    static let monitorShowSystem = "monitorShowSystem"
+    static let monitorShowNetwork = "monitorShowNetwork"
+    static let monitorShowPower = "monitorShowPower"
+    static let monitorShowMixer = "monitorShowMixer"
+    // System monitor — per-metric history graphs (each independently toggleable).
+    static let monitorGraphCPU = "monitorGraphCPU"
+    static let monitorGraphGPU = "monitorGraphGPU"
+    static let monitorGraphMemory = "monitorGraphMemory"
+    static let monitorGraphNetwork = "monitorGraphNetwork"
+    static let monitorGraphPower = "monitorGraphPower"
+    static let monitorGraphBattery = "monitorGraphBattery"
+    // System monitor — per-item visibility inside each panel section.
+    static let monitorSysTemps = "monitorSysTemps"
+    static let monitorSysCPU = "monitorSysCPU"
+    static let monitorSysGPU = "monitorSysGPU"
+    static let monitorSysBattery = "monitorSysBattery"
+    static let monitorSysMemory = "monitorSysMemory"
+    static let monitorSysUptime = "monitorSysUptime"
+    static let monitorNetSpeed = "monitorNetSpeed"
+    static let monitorNetTotals = "monitorNetTotals"
+    static let monitorNetTest = "monitorNetTest"
+    static let monitorPwrSystem = "monitorPwrSystem"
+    static let monitorPwrAdapter = "monitorPwrAdapter"
+    static let monitorPwrBattery = "monitorPwrBattery"
+    static let monitorPwrHealth = "monitorPwrHealth"
+
+    // Dev-build only: force the "update available" UI for local testing.
+    static let simulateUpdate = "simulateUpdate"
 }
 
 /// Bump `currentFeatureSet` when a release introduces new features worth a
 /// one-time tour. Users who onboarded under an older value are shown the
 /// "what's new" pass once, then their stored value catches up.
 enum OnboardingInfo {
-    static let currentFeatureSet = 1
+    // 2: system monitor — network, power, history graphs and the configurable
+    // menu bar. Existing users see the one-time "what's new" pass for it, opening
+    // straight on the menu bar setup page.
+    static let currentFeatureSet = 2
 }
 
 enum Defaults {
@@ -48,6 +89,35 @@ enum Defaults {
             DefaultsKey.autoQuitExceptions: ["com.apple.finder"],
             // When the shelf is on, the shake gesture is on too (still toggleable).
             DefaultsKey.shelfShakeToOpen: true,
+            // Menu bar metrics start off (the icon stays clean) and are opt-in.
+            // The panel shows every monitoring block by default; users hide what
+            // they don't want.
+            DefaultsKey.monitorInterval: 2,
+            DefaultsKey.menuBarMemoryStyle: "percent",
+            DefaultsKey.monitorShowSystem: true,
+            DefaultsKey.monitorShowNetwork: true,
+            DefaultsKey.monitorShowPower: true,
+            DefaultsKey.monitorShowMixer: true,
+            DefaultsKey.monitorGraphCPU: true,
+            DefaultsKey.monitorGraphGPU: true,
+            DefaultsKey.monitorGraphMemory: true,
+            DefaultsKey.monitorGraphNetwork: true,
+            DefaultsKey.monitorGraphPower: true,
+            DefaultsKey.monitorGraphBattery: true,
+            // Every per-item block shows by default; users hide what they don't want.
+            DefaultsKey.monitorSysTemps: true,
+            DefaultsKey.monitorSysCPU: true,
+            DefaultsKey.monitorSysGPU: true,
+            DefaultsKey.monitorSysBattery: true,
+            DefaultsKey.monitorSysMemory: true,
+            DefaultsKey.monitorSysUptime: true,
+            DefaultsKey.monitorNetSpeed: true,
+            DefaultsKey.monitorNetTotals: true,
+            DefaultsKey.monitorNetTest: true,
+            DefaultsKey.monitorPwrSystem: true,
+            DefaultsKey.monitorPwrAdapter: true,
+            DefaultsKey.monitorPwrBattery: true,
+            DefaultsKey.monitorPwrHealth: true,
         ])
     }
 }

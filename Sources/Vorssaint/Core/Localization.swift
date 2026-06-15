@@ -336,6 +336,72 @@ struct Strings {
     let obDoneHint: String
     let obWhatsNewTitle: String
     let obWhatsNewBody: String
+
+    // MARK: Settings — monitor / menu bar metrics
+    let tabMonitor: String
+    let monitorMenuBarSection: String
+    let monitorMenuBarCaption: String
+    let monitorShowCPU: String
+    let monitorShowMemory: String
+    let monitorShowNetwork: String
+    let monitorShowPowerLabel: String
+    let monitorIntervalLabel: String
+    let monitorInterval1: String
+    let monitorInterval2: String
+    let monitorInterval5: String
+    let monitorPanelSection: String
+
+    // MARK: Panel — network
+    let networkSection: String
+    let networkDownload: String
+    let networkUpload: String
+    let networkThisSession: String
+    let networkMeasuring: String
+
+    // MARK: Panel — power
+    let powerSection: String
+    let powerSystem: String
+    let powerAdapter: String
+    let powerBattery: String
+    let powerCharging: String
+    let powerOnBattery: String
+    let powerPluggedIn: String
+    let powerUnavailable: String
+    let powerAdapterMaxFormat: String   // + rated watts, e.g. "30 W max"
+    let monitorShowGPU: String
+    let monitorGraphsSection: String
+    let monitorGraphsCaption: String
+
+    // MARK: Update notification + onboarding menu bar setup
+    let updateBannerTitle: String
+    let updateBannerAction: String
+    let obStepMenuBarTitle: String
+    let obStepMenuBarBody: String
+    let obStepMenuBarNote: String
+    let monitorMemoryStyleLabel: String
+    let memoryStyleDot: String
+    let memoryStylePercent: String
+    let memoryStyleBoth: String
+
+    // MARK: System uptime, battery health, speed test
+    let systemUptime: String
+    let powerHealth: String
+    let powerCycles: String
+    let speedTestRun: String
+    let speedTestAgain: String
+    let speedTestLatency: String
+    let speedTestTesting: String
+    let speedTestFailed: String
+
+    // MARK: Per-item panel config (Settings + onboarding)
+    let monitorShowInPanel: String
+    let monitorItemUptime: String
+    let monitorItemNetSpeed: String
+    let monitorItemNetTotals: String
+    let monitorItemNetTest: String
+    let monitorPanelConfigHint: String
+    let obStepPanelTitle: String
+    let obStepPanelBody: String
 }
 
 // MARK: - Português (Brasil)
@@ -608,7 +674,67 @@ extension Strings {
         obStepDoneBody: "O Vorssaint já está cuidando do seu Mac.",
         obDoneHint: "Procure o buraco negro na barra de menus, no canto superior direito da tela.",
         obWhatsNewTitle: "Novidades nesta versão",
-        obWhatsNewBody: "Quatro novos recursos opcionais. Veja como cada um funciona e ative os que quiser."
+        obWhatsNewBody: "Quatro novos recursos opcionais. Veja como cada um funciona e ative os que quiser.",
+
+        tabMonitor: "Monitor",
+        monitorMenuBarSection: "Na barra de menus",
+        monitorMenuBarCaption: "Escolha o que aparece ao lado do ícone na barra de menus.",
+        monitorShowCPU: "CPU",
+        monitorShowMemory: "Memória",
+        monitorShowNetwork: "Rede",
+        monitorShowPowerLabel: "Energia",
+        monitorIntervalLabel: "Atualizar a cada",
+        monitorInterval1: "1 segundo",
+        monitorInterval2: "2 segundos",
+        monitorInterval5: "5 segundos",
+        monitorPanelSection: "No painel",
+
+        networkSection: "Rede",
+        networkDownload: "Download",
+        networkUpload: "Upload",
+        networkThisSession: "Nesta sessão",
+        networkMeasuring: "Medindo…",
+
+        powerSection: "Energia",
+        powerSystem: "Sistema",
+        powerAdapter: "Adaptador",
+        powerBattery: "Bateria",
+        powerCharging: "Carregando",
+        powerOnBattery: "Na bateria",
+        powerPluggedIn: "Na tomada",
+        powerUnavailable: "Métricas de energia indisponíveis neste Mac",
+        powerAdapterMaxFormat: "%@ máx.",
+        monitorShowGPU: "GPU",
+        monitorGraphsSection: "Gráficos",
+        monitorGraphsCaption: "Escolha quais métricas mostram um gráfico ao longo do tempo.",
+
+        updateBannerTitle: "Atualização disponível",
+        updateBannerAction: "Atualizar",
+        obStepMenuBarTitle: "Métricas na barra de menus",
+        obStepMenuBarBody: "Escolha o que mostrar ao lado do ícone. A prévia acima muda em tempo real.",
+        obStepMenuBarNote: "Novidade: blocos de Rede e Energia e gráficos no painel. Ajuste tudo depois em Ajustes › Monitor.",
+        monitorMemoryStyleLabel: "Mostrar memória como",
+        memoryStyleDot: "Ponto",
+        memoryStylePercent: "%",
+        memoryStyleBoth: "Ambos",
+
+        systemUptime: "Ativo há",
+        powerHealth: "Saúde da bateria",
+        powerCycles: "ciclos",
+        speedTestRun: "Testar velocidade",
+        speedTestAgain: "Testar de novo",
+        speedTestLatency: "Latência",
+        speedTestTesting: "Testando…",
+        speedTestFailed: "Falha no teste",
+
+        monitorShowInPanel: "Mostrar no painel",
+        monitorItemUptime: "Tempo ativo",
+        monitorItemNetSpeed: "Velocidade ao vivo",
+        monitorItemNetTotals: "Totais da sessão",
+        monitorItemNetTest: "Teste de velocidade",
+        monitorPanelConfigHint: "Abra um bloco para escolher o que ele mostra.",
+        obStepPanelTitle: "O que aparece no painel",
+        obStepPanelBody: "Abra cada bloco e escolha exatamente o que mostrar quando você clica no ícone."
     )
 }
 
@@ -882,6 +1008,66 @@ extension Strings {
         obStepDoneBody: "Vorssaint is already looking after your Mac.",
         obDoneHint: "Look for the black hole in the menu bar, at the top right of the screen.",
         obWhatsNewTitle: "What's new in this version",
-        obWhatsNewBody: "Four new optional features. See how each one works and turn on the ones you want."
+        obWhatsNewBody: "Four new optional features. See how each one works and turn on the ones you want.",
+
+        tabMonitor: "Monitor",
+        monitorMenuBarSection: "In the menu bar",
+        monitorMenuBarCaption: "Choose what appears next to the icon in the menu bar.",
+        monitorShowCPU: "CPU",
+        monitorShowMemory: "Memory",
+        monitorShowNetwork: "Network",
+        monitorShowPowerLabel: "Power",
+        monitorIntervalLabel: "Update every",
+        monitorInterval1: "1 second",
+        monitorInterval2: "2 seconds",
+        monitorInterval5: "5 seconds",
+        monitorPanelSection: "In the panel",
+
+        networkSection: "Network",
+        networkDownload: "Download",
+        networkUpload: "Upload",
+        networkThisSession: "This session",
+        networkMeasuring: "Measuring…",
+
+        powerSection: "Power",
+        powerSystem: "System",
+        powerAdapter: "Adapter",
+        powerBattery: "Battery",
+        powerCharging: "Charging",
+        powerOnBattery: "On battery",
+        powerPluggedIn: "Plugged in",
+        powerUnavailable: "Power metrics unavailable on this Mac",
+        powerAdapterMaxFormat: "%@ max",
+        monitorShowGPU: "GPU",
+        monitorGraphsSection: "Graphs",
+        monitorGraphsCaption: "Choose which metrics show a graph over time.",
+
+        updateBannerTitle: "Update available",
+        updateBannerAction: "Update",
+        obStepMenuBarTitle: "Metrics in the menu bar",
+        obStepMenuBarBody: "Pick what to show next to the icon. The preview above updates live.",
+        obStepMenuBarNote: "New: Network and Power blocks and graphs in the panel. Fine-tune it all later in Settings › Monitor.",
+        monitorMemoryStyleLabel: "Show memory as",
+        memoryStyleDot: "Dot",
+        memoryStylePercent: "%",
+        memoryStyleBoth: "Both",
+
+        systemUptime: "Up for",
+        powerHealth: "Battery health",
+        powerCycles: "cycles",
+        speedTestRun: "Speed test",
+        speedTestAgain: "Test again",
+        speedTestLatency: "Latency",
+        speedTestTesting: "Testing…",
+        speedTestFailed: "Test failed",
+
+        monitorShowInPanel: "Show in panel",
+        monitorItemUptime: "Uptime",
+        monitorItemNetSpeed: "Live speed",
+        monitorItemNetTotals: "Session totals",
+        monitorItemNetTest: "Speed test",
+        monitorPanelConfigHint: "Open a block to choose what it shows.",
+        obStepPanelTitle: "What's in the panel",
+        obStepPanelBody: "Open each block and pick exactly what shows when you click the icon."
     )
 }

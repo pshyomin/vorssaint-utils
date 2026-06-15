@@ -13,25 +13,71 @@ struct SystemSection: View {
     @ObservedObject private var monitor = SystemMonitor.shared
     @State private var expanded: BreakdownKind?
     @State private var breakdownRows: [ProcessUsage] = []
+    @State private var lastBreakdownRefresh = Date.distantPast
+    @AppStorage(DefaultsKey.monitorGraphCPU) private var graphCPU = true
+    @AppStorage(DefaultsKey.monitorGraphGPU) private var graphGPU = true
+    @AppStorage(DefaultsKey.monitorGraphMemory) private var graphMemory = true
+    @AppStorage(DefaultsKey.monitorGraphBattery) private var graphBattery = true
+    @AppStorage(DefaultsKey.monitorSysTemps) private var sysTemps = true
+    @AppStorage(DefaultsKey.monitorSysCPU) private var sysCPU = true
+    @AppStorage(DefaultsKey.monitorSysGPU) private var sysGPU = true
+    @AppStorage(DefaultsKey.monitorSysBattery) private var sysBattery = true
+    @AppStorage(DefaultsKey.monitorSysMemory) private var sysMemory = true
+    @AppStorage(DefaultsKey.monitorSysUptime) private var sysUptime = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionTitle(l10n.s.systemSection)
-            VStack(alignment: .leading, spacing: 10) {
-                temperatureGrid
-                Divider()
-                usageRows
-                Divider()
-                memoryRows
+        Group {
+            if visibleBlocks.isEmpty {
+                EmptyView()
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    sectionTitle(l10n.s.systemSection)
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(Array(visibleBlocks.enumerated()), id: \.element) { index, block in
+                            if index > 0 { Divider() }
+                            blockContent(block)
+                        }
+                    }
+                    .panelCard()
+                }
             }
-            .panelCard()
         }
         .onReceive(monitor.$snapshot) { _ in
+            // The breakdown forks `ps` (and walks IORegistry for GPU), so refresh it
+            // at most every ~4 s while expanded instead of on every ~2 s snapshot.
+            guard expanded != nil, Date().timeIntervalSince(lastBreakdownRefresh) > 4 else { return }
             refreshBreakdown()
         }
         .onDisappear {
             expanded = nil
             breakdownRows = []
+        }
+    }
+
+    /// Card subsections, in order, filtered by the per-item toggles (and whether a
+    /// battery exists). Drives divider interleaving so only rendered blocks get one.
+    private enum Block: Hashable { case temps, usage, memory, uptime }
+
+    private var usageVisible: Bool {
+        sysCPU || sysGPU || (sysBattery && monitor.snapshot.power?.chargePercent != nil)
+    }
+
+    private var visibleBlocks: [Block] {
+        var blocks: [Block] = []
+        if sysTemps { blocks.append(.temps) }
+        if usageVisible { blocks.append(.usage) }
+        if sysMemory { blocks.append(.memory) }
+        if sysUptime { blocks.append(.uptime) }
+        return blocks
+    }
+
+    @ViewBuilder
+    private func blockContent(_ block: Block) -> some View {
+        switch block {
+        case .temps: temperatureGrid
+        case .usage: usageRows
+        case .memory: memoryRows
+        case .uptime: uptimeRow
         }
     }
 
@@ -50,6 +96,7 @@ struct SystemSection: View {
 
     private func refreshBreakdown() {
         guard let kind = expanded else { return }
+        lastBreakdownRefresh = Date()
         DispatchQueue.global(qos: .userInitiated).async {
             let rows: [ProcessUsage]
             switch kind {
@@ -150,11 +197,81 @@ struct SystemSection: View {
     private var usageRows: some View {
         VStack(alignment: .leading, spacing: 6) {
             subsectionLabel(l10n.s.usageSection)
-            usageRow(label: l10n.s.cpuLabel, fraction: monitor.snapshot.cpuUsage, kind: .cpu)
-            breakdownList(for: .cpu)
-            usageRow(label: l10n.s.gpuLabel, fraction: monitor.snapshot.gpuUsage, kind: .gpu)
-            breakdownList(for: .gpu)
+            if sysCPU {
+                usageRow(label: l10n.s.cpuLabel, fraction: monitor.snapshot.cpuUsage, kind: .cpu)
+                if graphCPU, monitor.snapshot.cpuHistory.count >= 2 {
+                    Sparkline(values: monitor.snapshot.cpuHistory, color: .accentColor, maxValue: 1)
+                        .frame(height: 22)
+                }
+                breakdownList(for: .cpu)
+            }
+            if sysGPU {
+                usageRow(label: l10n.s.gpuLabel, fraction: monitor.snapshot.gpuUsage, kind: .gpu)
+                if graphGPU, monitor.snapshot.gpuHistory.count >= 2 {
+                    Sparkline(values: monitor.snapshot.gpuHistory, color: .cyan, maxValue: 1)
+                        .frame(height: 22)
+                }
+                breakdownList(for: .gpu)
+            }
+            if sysBattery {
+                batteryUsageRow
+            }
         }
+    }
+
+    // MARK: Battery (charge level, next to CPU/GPU) and uptime
+
+    @ViewBuilder
+    private var batteryUsageRow: some View {
+        if let charge = monitor.snapshot.power?.chargePercent {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 8) {
+                    Image(systemName: (monitor.snapshot.power?.isCharging ?? false) ? "bolt.fill" : "battery.100")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 10)
+                    Text(l10n.s.batteryLabel)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, alignment: .leading)
+                    UsageBar(fraction: Double(charge) / 100, tint: chargeTint(charge))
+                    Text("\(charge)%")
+                        .font(.system(size: 11, weight: .medium))
+                        .monospacedDigit()
+                        .frame(width: 38, alignment: .trailing)
+                }
+                if graphBattery, monitor.snapshot.batteryHistory.count >= 2 {
+                    Sparkline(values: monitor.snapshot.batteryHistory, color: .green, maxValue: 1)
+                        .frame(height: 22)
+                }
+            }
+        }
+    }
+
+    private func chargeTint(_ charge: Int) -> Color {
+        charge < 20 ? .red : (charge < 40 ? .yellow : .green)
+    }
+
+    private var uptimeRow: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "clock")
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
+            Text("\(l10n.s.systemUptime) \(Self.uptimeString())")
+                .font(.system(size: 10.5))
+                .foregroundStyle(.tertiary)
+            Spacer()
+        }
+    }
+
+    static func uptimeString() -> String {
+        let total = Int(ProcessInfo.processInfo.systemUptime)
+        let days = total / 86_400
+        let hours = (total % 86_400) / 3_600
+        let minutes = (total % 3_600) / 60
+        if days > 0 { return "\(days)d \(hours)h" }
+        if hours > 0 { return "\(hours)h \(minutes)min" }
+        return "\(minutes)min"
     }
 
     private func usageRow(label: String, fraction: Double?, kind: BreakdownKind) -> some View {
@@ -209,6 +326,10 @@ struct SystemSection: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            if graphMemory, monitor.snapshot.memoryHistory.count >= 2 {
+                Sparkline(values: monitor.snapshot.memoryHistory, color: .mint, maxValue: 1)
+                    .frame(height: 22)
+            }
             breakdownList(for: .memory)
         }
     }
@@ -229,6 +350,7 @@ struct SystemSection: View {
 /// Thin capacity bar for CPU/GPU usage.
 private struct UsageBar: View {
     let fraction: Double
+    var tint: Color? = nil
 
     var body: some View {
         GeometryReader { proxy in
@@ -236,7 +358,7 @@ private struct UsageBar: View {
                 Capsule()
                     .fill(Color.primary.opacity(0.08))
                 Capsule()
-                    .fill(barColor)
+                    .fill(tint ?? barColor)
                     .frame(width: max(3, proxy.size.width * min(1, fraction)))
                     .animation(.easeOut(duration: 0.4), value: fraction)
             }

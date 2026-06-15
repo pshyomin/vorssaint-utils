@@ -81,6 +81,20 @@ final class SMCClient {
         }
     }
 
+    /// Looks up a single key by its 4-character code, returning its size and type
+    /// so `readValue` can decode it. Cheaper than enumerating every key — used to
+    /// resolve the power sensors directly.
+    func key(named name: String) -> Key? {
+        var probe = SMCParamStruct()
+        probe.key = Self.fourCC(name)
+        probe.data8 = Self.cmdKeyInfo
+        guard let out = call(&probe), out.result == 0 else { return nil }
+        return Key(code: probe.key,
+                   name: name,
+                   dataSize: out.keyInfo.dataSize,
+                   dataType: Self.fourCCString(out.keyInfo.dataType))
+    }
+
     // MARK: - Plumbing
 
     private func keyCount() -> Int {

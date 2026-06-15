@@ -1,5 +1,15 @@
+import AppKit
 import Combine
 import SwiftUI
+
+/// Measures the panel's natural content height so the popover can cap itself to
+/// the screen and scroll, instead of clipping the top when many blocks are on.
+private struct PanelHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
 
 /// Content of the menu bar popover: keep-awake controls, the volume mixer and
 /// the system monitor.
@@ -7,17 +17,41 @@ struct MenuPanelView: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var awake = KeepAwakeManager.shared
     @AppStorage(DefaultsKey.hotkeyEnabled) private var hotkeyEnabled = true
+    @AppStorage(DefaultsKey.monitorShowMixer) private var showMixer = true
+    @AppStorage(DefaultsKey.monitorShowSystem) private var showSystem = true
+    @AppStorage(DefaultsKey.monitorShowNetwork) private var showNetwork = true
+    @AppStorage(DefaultsKey.monitorShowPower) private var showPower = true
+    @State private var contentHeight: CGFloat = 0
+
+    /// Cap the panel to the usable screen height so it never overflows the menu
+    /// bar; taller content scrolls inside.
+    private var maxHeight: CGFloat {
+        max(360, (NSScreen.main?.visibleFrame.height ?? 760) - 24)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            header
-            KeepAwakeCard()
-            MixerSection()
-            SystemSection()
-            footer
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 12) {
+                UpdateBanner()
+                header
+                KeepAwakeCard()
+                if showMixer { MixerSection() }
+                if showSystem { SystemSection() }
+                if showNetwork { NetworkSection() }
+                if showPower { PowerSection() }
+                footer
+            }
+            .padding(12)
+            .frame(width: 332)
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: PanelHeightKey.self, value: proxy.size.height)
+            })
         }
-        .padding(12)
-        .frame(width: 332)
+        // Before the first measurement, start from a compact estimate (not maxHeight)
+        // so the popover grows slightly into place rather than opening full-screen-tall
+        // and snapping down on first use.
+        .frame(width: 332, height: min(contentHeight == 0 ? 480 : contentHeight, maxHeight))
+        .onPreferenceChange(PanelHeightKey.self) { contentHeight = $0 }
         .onAppear {
             awake.refreshPasswordlessStatus()
         }
@@ -77,6 +111,72 @@ struct MenuPanelView: View {
             .foregroundStyle(.secondary)
         }
         .padding(.top, 2)
+    }
+}
+
+// MARK: - Update banner
+
+/// Discreet "update available" row shown above everything when a newer release
+/// is found. Tapping it installs the update (which quits and relaunches).
+struct UpdateBanner: View {
+    @ObservedObject private var l10n = L10n.shared
+    @ObservedObject private var updates = UpdateService.shared
+
+    var body: some View {
+        switch updates.state {
+        case let .available(version):
+            Button {
+                UpdateService.shared.downloadAndInstall()
+            } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.white)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(l10n.s.updateBannerTitle)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white)
+                        Text("\(l10n.s.updateAvailablePrefix) \(version)")
+                            .font(.system(size: 10.5))
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                    Spacer()
+                    Text(l10n.s.updateBannerAction)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(.white))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.accentColor)
+                )
+            }
+            .buttonStyle(.plain)
+        case .downloading:
+            progressRow(l10n.s.updateDownloading)
+        case .installing:
+            progressRow(l10n.s.updateInstalling)
+        default:
+            EmptyView()
+        }
+    }
+
+    private func progressRow(_ text: String) -> some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            Text(text).font(.system(size: 11.5, weight: .medium))
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.primary.opacity(0.06))
+        )
     }
 }
 

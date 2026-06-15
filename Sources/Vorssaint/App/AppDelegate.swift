@@ -6,6 +6,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     private var statusController: StatusItemController!
     private let popover = NSPopover()
     private var popoverClosedAt = Date.distantPast
+    private var popoverDismissMonitor: Any?
     private var isTerminating = false
     private var cancellables = Set<AnyCancellable>()
     private var settingsWindow: NSWindow?
@@ -40,6 +41,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         ShelfService.shared.syncWithPreferences()
         AppVolumeMixer.shared.start()
         UpdateService.shared.startAutomaticChecks()
+        NotificationCenter.default.addObserver(self, selector: #selector(appBecameActive),
+                                               name: NSApplication.didBecomeActiveNotification, object: nil)
 
         // If Accessibility is granted while the app is running (e.g. during
         // onboarding), bring the input features up without a relaunch.
@@ -88,12 +91,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     // MARK: - Main panel
 
     private func setUpPopover() {
-        popover.behavior = .transient
+        // Application-defined (not .transient) so the panel stays open while the
+        // user works in our own Settings window and sees changes live. A global
+        // click monitor + resign-active still dismiss it for clicks in other apps.
+        popover.behavior = .applicationDefined
         popover.animates = false
         popover.delegate = self
         let host = NSHostingController(rootView: MenuPanelView())
         host.sizingOptions = .preferredContentSize
         popover.contentViewController = host
+        NotificationCenter.default.addObserver(self, selector: #selector(appResignedActive),
+                                               name: NSApplication.didResignActiveNotification, object: nil)
     }
 
     private func togglePopover() {
@@ -114,6 +122,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             window.makeKey()
         }
         NSApp.activate(ignoringOtherApps: true)
+        // Only arm the dismiss monitor if the popover actually presented — otherwise
+        // popoverDidClose never fires and the global monitor would leak indefinitely.
+        guard popover.isShown else { return }
+        installPopoverDismissMonitor()
+    }
+
+    private func installPopoverDismissMonitor() {
+        removePopoverDismissMonitor()
+        // A global monitor only sees events delivered to OTHER apps, so a click in
+        // another app or on the desktop dismisses the panel — while clicks in our
+        // own Settings window do not, so the two can be used side by side.
+        popoverDismissMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in
+            guard let self, self.popover.isShown else { return }
+            self.closePopover()
+        }
+    }
+
+    private func removePopoverDismissMonitor() {
+        if let monitor = popoverDismissMonitor {
+            NSEvent.removeMonitor(monitor)
+            popoverDismissMonitor = nil
+        }
+    }
+
+    @objc private func appResignedActive() {
+        // Leaving the app entirely (e.g. ⌘Tab) dismisses the panel; switching to
+        // our own Settings window keeps the app active, so it stays open.
+        if popover.isShown { closePopover() }
+    }
+
+    @objc private func appBecameActive() {
+        // Coming back to the app is a good moment to surface a fresh release.
+        UpdateService.shared.checkIfStale()
     }
 
     func closePopover(after delay: TimeInterval = 0) {
@@ -126,13 +169,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         }
     }
 
-    // The system monitor only ticks while the panel is on screen.
+    // While the panel is on screen the monitor samples everything (temperatures,
+    // GPU, graphs); when it closes it keeps going only if a menu bar metric needs it.
     func popoverWillShow(_ notification: Notification) {
-        SystemMonitor.shared.start()
+        SystemMonitor.shared.panelDidAppear()
+        UpdateService.shared.checkIfStale()
     }
 
     func popoverDidClose(_ notification: Notification) {
-        SystemMonitor.shared.stop()
+        SystemMonitor.shared.panelDidDisappear()
+        removePopoverDismissMonitor()
         popoverClosedAt = Date()
     }
 
@@ -247,7 +293,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     // MARK: - Windows
 
     func openSettingsWindow() {
-        closePopover()
+        // Intentionally does NOT close the panel: the panel uses applicationDefined
+        // dismissal, so it stays open beside Settings for a live preview.
         if settingsWindow == nil {
             let host = NSHostingController(rootView: SettingsView())
             let window = NSWindow(contentViewController: host)

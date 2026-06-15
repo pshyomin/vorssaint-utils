@@ -22,7 +22,8 @@ final class UpdateService: ObservableObject {
 
     private let repository = "vorssaint/vorssaint-utils"
     private var downloadURL: URL?
-    private var dailyTimer: Timer?
+    private var refreshTimer: Timer?
+    private var notifiedVersion: String?   // last release we posted a notification for
 
     private init() {}
 
@@ -38,6 +39,14 @@ final class UpdateService: ObservableObject {
 
     /// Called at launch: checks shortly after start and then daily, if enabled.
     func startAutomaticChecks() {
+        // The local dev build never auto-updates, but can simulate the
+        // "update available" UI via the `simulateUpdate` default, for testing.
+        if AppInfo.isDeveloperBuild {
+            if UserDefaults.standard.bool(forKey: DefaultsKey.simulateUpdate) {
+                state = .available(version: "9.9.9")
+            }
+            return
+        }
         configureAutomaticChecks()
         if autoCheckEnabled {
             DispatchQueue.main.asyncAfter(deadline: .now() + 6) { [weak self] in
@@ -47,20 +56,30 @@ final class UpdateService: ObservableObject {
     }
 
     private func configureAutomaticChecks() {
-        dailyTimer?.invalidate()
-        dailyTimer = nil
+        refreshTimer?.invalidate()
+        refreshTimer = nil
         guard autoCheckEnabled else { return }
-        let timer = Timer(timeInterval: 60 * 60 * 24, repeats: true) { [weak self] _ in
+        // Hourly (was daily). Combined with the activate / panel-open checks, a new
+        // release surfaces within the hour instead of up to a day later.
+        let timer = Timer(timeInterval: 60 * 60, repeats: true) { [weak self] _ in
             self?.check(manual: false)
         }
-        timer.tolerance = 60 * 60
+        timer.tolerance = 60 * 5
         RunLoop.main.add(timer, forMode: .common)
-        dailyTimer = timer
+        refreshTimer = timer
     }
 
     // MARK: - Check
 
     func check(manual: Bool) {
+        if AppInfo.isDeveloperBuild {
+            // No real update target; reflect the simulation default so the
+            // notification UI can be exercised locally.
+            state = UserDefaults.standard.bool(forKey: DefaultsKey.simulateUpdate)
+                ? .available(version: "9.9.9") : .upToDate
+            lastChecked = Date()
+            return
+        }
         if case .checking = state { return }
         if case .downloading = state { return }
         if case .installing = state { return }
@@ -86,7 +105,9 @@ final class UpdateService: ObservableObject {
 
                 if Self.isNewer(latest, than: AppInfo.version), self.downloadURL != nil {
                     self.state = .available(version: latest)
-                    if !manual {
+                    // Notify once per distinct release, not on every hourly re-check.
+                    if !manual, latest != self.notifiedVersion {
+                        self.notifiedVersion = latest
                         let s = L10n.shared.s
                         Notifier.post(title: s.updateNotifyTitle,
                                       body: "\(s.updateAvailablePrefix) \(latest)")
@@ -98,16 +119,38 @@ final class UpdateService: ObservableObject {
         }.resume()
     }
 
+    /// Re-checks only if the last check is stale — called when the app reactivates
+    /// or the panel opens, so a new release surfaces promptly without hammering the
+    /// API. The hourly timer is the floor; this makes it feel immediate.
+    func checkIfStale(maxAge: TimeInterval = 15 * 60) {
+        if AppInfo.isDeveloperBuild { return }
+        guard autoCheckEnabled else { return }
+        switch state {
+        case .checking, .downloading, .installing: return
+        default: break
+        }
+        if let last = lastChecked, Date().timeIntervalSince(last) < maxAge { return }
+        check(manual: false)
+    }
+
     // MARK: - Download & install
 
     func downloadAndInstall() {
+        if AppInfo.isDeveloperBuild { return }  // never replace the local dev build over itself
         guard let downloadURL else { return }
+        // Remember the offer so a failed download restores it (the user can retry)
+        // instead of dropping to a dead .failed state that hides the update and
+        // blocks checkIfStale for 15 min.
+        let offered: String?
+        if case let .available(version) = state { offered = version } else { offered = nil }
         state = .downloading
 
         URLSession.shared.downloadTask(with: downloadURL) { [weak self] tempURL, _, error in
             guard let self else { return }
             guard let tempURL, error == nil else {
-                DispatchQueue.main.async { self.state = .failed(error?.localizedDescription ?? "—") }
+                DispatchQueue.main.async {
+                    self.state = offered.map { State.available(version: $0) } ?? .failed(error?.localizedDescription ?? "—")
+                }
                 return
             }
             // Move out of the URL session's scratch space before handing off.
@@ -117,7 +160,9 @@ final class UpdateService: ObservableObject {
             do {
                 try FileManager.default.moveItem(at: tempURL, to: dmgURL)
             } catch {
-                DispatchQueue.main.async { self.state = .failed(error.localizedDescription) }
+                DispatchQueue.main.async {
+                    self.state = offered.map { State.available(version: $0) } ?? .failed(error.localizedDescription)
+                }
                 return
             }
             DispatchQueue.main.async {

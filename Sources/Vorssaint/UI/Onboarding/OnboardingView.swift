@@ -13,16 +13,18 @@ enum OnboardingMode {
     var steps: [OnboardingStep] {
         switch self {
         case .full:
-            return [.welcome, .accessibility, .screenRecording, .monitor, .optionalFeatures,
-                    .cutPaste, .autoQuit, .uninstaller, .shelf, .status, .done]
+            return [.welcome, .accessibility, .screenRecording, .monitor, .menuBarSetup,
+                    .panelSetup, .optionalFeatures, .cutPaste, .autoQuit, .uninstaller, .shelf, .status, .done]
         case .whatsNew:
-            return [.whatsNew, .cutPaste, .autoQuit, .uninstaller, .shelf, .done]
+            // This version's headline is the system monitor; configure the menu bar,
+            // then the panel (the exact new pages), then wrap up.
+            return [.menuBarSetup, .panelSetup, .done]
         }
     }
 }
 
 enum OnboardingStep {
-    case welcome, accessibility, screenRecording, monitor, optionalFeatures
+    case welcome, accessibility, screenRecording, monitor, menuBarSetup, panelSetup, optionalFeatures
     case whatsNew, cutPaste, autoQuit, uninstaller, shelf
     case status, done
 }
@@ -50,7 +52,10 @@ struct OnboardingView: View {
         }
         .frame(width: 540, height: 600)
         .onAppear {
-            if !steps.indices.contains(index) { index = 0 }
+            // "What's new" always opens on its first (exact) page; the resume
+            // index is only meaningful for the full first-run flow.
+            if mode == .whatsNew { index = 0 }
+            else if !steps.indices.contains(index) { index = 0 }
         }
     }
 
@@ -69,6 +74,8 @@ struct OnboardingView: View {
                                               body: l10n.s.obStepRecordingBody,
                                               why: l10n.s.obRecordingWhy)
         case .monitor: MonitorStep()
+        case .menuBarSetup: MenuBarSetupStep()
+        case .panelSetup: PanelSetupStep()
         case .optionalFeatures: OptionalFeaturesStep()
         case .whatsNew: WhatsNewIntroStep()
         case .cutPaste: CutPasteShowcaseStep()
@@ -256,8 +263,8 @@ private struct MonitorStep: View {
             // A live taste of the panel's System section.
             SystemSection()
                 .frame(width: 320)
-                .onAppear { SystemMonitor.shared.start() }
-                .onDisappear { SystemMonitor.shared.stop() }
+                .onAppear { SystemMonitor.shared.panelDidAppear() }
+                .onDisappear { SystemMonitor.shared.panelDidDisappear() }
 
             Text(l10n.s.obMonitorNoPermission)
                 .font(.system(size: 11.5))
@@ -266,6 +273,161 @@ private struct MonitorStep: View {
                 .padding(.horizontal, 36)
 
             Spacer()
+        }
+    }
+}
+
+// MARK: - Menu bar setup (live preview + toggles)
+
+/// New-feature step: a live preview of the menu bar with the toggles right
+/// there, so people choose what to pin before they ever open Settings. Shown in
+/// the first-run flow and as the one-time "what's new" pass for updaters.
+private struct MenuBarSetupStep: View {
+    @ObservedObject private var l10n = L10n.shared
+    @AppStorage(DefaultsKey.menuBarCPU) private var cpu = false
+    @AppStorage(DefaultsKey.menuBarGPU) private var gpu = false
+    @AppStorage(DefaultsKey.menuBarMemory) private var memory = false
+    @AppStorage(DefaultsKey.menuBarNetwork) private var network = false
+    @AppStorage(DefaultsKey.menuBarPower) private var power = false
+
+    var body: some View {
+        VStack(spacing: 16) {
+            StepHeader(icon: "menubar.rectangle",
+                       title: l10n.s.obStepMenuBarTitle,
+                       subtitle: l10n.s.obStepMenuBarBody)
+
+            MenuBarPreview()
+                .padding(.horizontal, 28)
+
+            VStack(spacing: 0) {
+                toggle(l10n.s.monitorShowCPU, $cpu)
+                Divider()
+                toggle(l10n.s.monitorShowGPU, $gpu)
+                Divider()
+                toggle(l10n.s.monitorShowMemory, $memory)
+                Divider()
+                toggle(l10n.s.monitorShowNetwork, $network)
+                Divider()
+                toggle(l10n.s.monitorShowPowerLabel, $power)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.primary.opacity(0.05))
+            )
+            .padding(.horizontal, 28)
+
+            Text(l10n.s.obStepMenuBarNote)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 36)
+
+            Spacer()
+        }
+        .onAppear { SystemMonitor.shared.panelDidAppear() }
+        .onDisappear { SystemMonitor.shared.panelDidDisappear() }
+    }
+
+    private func toggle(_ title: String, _ isOn: Binding<Bool>) -> some View {
+        Toggle(title, isOn: isOn)
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .padding(.vertical, 6)
+    }
+}
+
+/// A faithful, live miniature of the menu bar corner: the same fixed-width,
+/// monospaced text the real status item renders, updating as toggles change.
+private struct MenuBarPreview: View {
+    @ObservedObject private var monitor = SystemMonitor.shared
+    @AppStorage(DefaultsKey.menuBarCPU) private var cpu = false
+    @AppStorage(DefaultsKey.menuBarGPU) private var gpu = false
+    @AppStorage(DefaultsKey.menuBarMemory) private var memory = false
+    @AppStorage(DefaultsKey.menuBarNetwork) private var network = false
+    @AppStorage(DefaultsKey.menuBarPower) private var power = false
+    @AppStorage(DefaultsKey.menuBarMemoryStyle) private var memoryStyle = "percent"
+
+    var body: some View {
+        let segments = MenuBarRenderer.segments(for: monitor.snapshot,
+                                                metrics: MenuBarMetric.enabled(in: .standard))
+        HStack(spacing: 12) {
+            Spacer()
+            Image(systemName: "wifi").foregroundStyle(.white.opacity(0.5))
+            Image(systemName: "battery.75").foregroundStyle(.white.opacity(0.5))
+            HStack(spacing: 5) {
+                glyph
+                if !segments.isEmpty {
+                    HStack(spacing: 0) {
+                        ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
+                            segmentView(segment)
+                        }
+                    }
+                }
+            }
+        }
+        .font(.system(size: 12))
+        .padding(.horizontal, 14)
+        .frame(height: 32)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.black.opacity(0.82))
+        )
+    }
+
+    @ViewBuilder
+    private func segmentView(_ segment: MenuBarSegment) -> some View {
+        switch segment {
+        case let .text(string):
+            Text(string)
+                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .foregroundStyle(.white)
+        case let .dot(pressure):
+            Circle()
+                .fill(dotColor(pressure))
+                .frame(width: 8, height: 8)
+        }
+    }
+
+    private func dotColor(_ pressure: MemoryPressure) -> Color {
+        switch pressure {
+        case .normal: return .green
+        case .warning: return .yellow
+        case .critical: return .red
+        case .unknown: return .gray
+        }
+    }
+
+    private var glyph: some View {
+        Group {
+            if let image = BlackHoleGlyph.image(active: true) {
+                Image(nsImage: image).renderingMode(.template)
+            } else {
+                Image(systemName: "circle.fill")
+            }
+        }
+        .foregroundStyle(.white)
+    }
+}
+
+// MARK: - Panel setup (what's in the panel — expandable per-section config)
+
+private struct PanelSetupStep: View {
+    @ObservedObject private var l10n = L10n.shared
+
+    var body: some View {
+        VStack(spacing: 12) {
+            StepHeader(icon: "rectangle.stack",
+                       title: l10n.s.obStepPanelTitle,
+                       subtitle: l10n.s.obStepPanelBody)
+            Form {
+                MonitorPanelConfig()
+            }
+            .formStyle(.grouped)
+            .frame(maxHeight: .infinity)
         }
     }
 }

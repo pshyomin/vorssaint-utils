@@ -33,6 +33,20 @@ enum SelfTest {
             warnings.append("AppleSMC unavailable")
         }
 
+        // Network counters should be readable and never run backwards.
+        let net1 = NetworkSampler.readCounters()
+        let net2 = NetworkSampler.readCounters()
+        if net1 == NetworkCounters(), net2 == NetworkCounters() {
+            warnings.append("network counters unavailable")
+        } else if net2.received < net1.received || net2.sent < net1.sent {
+            failures.append("network counters decreased")
+        }
+
+        // Power: laptops report battery/adapter flow; some desktops report nothing.
+        if PowerSampler(smc: SMCClient()).sample().isEmpty {
+            warnings.append("no power metrics on this Mac")
+        }
+
         UserDefaults.standard.set("ok", forKey: "selftest")
         if UserDefaults.standard.string(forKey: "selftest") != "ok" {
             failures.append("UserDefaults")

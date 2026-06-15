@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.10.0] - 2026-06-15
+
+### Added
+- **System monitor, expanded.** The panel now shows live network speed (download
+  and upload) with session totals; power draw, broken into what the Mac consumes,
+  what it pulls from the adapter, and the battery's flow, health, charge and cycle
+  count; and history graphs for CPU, GPU, memory, network, power and battery. A
+  system uptime line is included too.
+- **Metrics in the menu bar.** Pin any of CPU, GPU, RAM, Network or Power next to
+  the icon, updated live. Memory can show as a colored pressure dot, a percentage,
+  or both. Everything is opt-in, and the text keeps a fixed width so the icon
+  never shifts as the numbers change.
+- **Internet speed test.** Measure download, upload and latency on demand from the
+  Network block.
+- **Pick exactly what you see.** Choose which blocks appear in the panel and which
+  items appear inside each block, both in Settings and during setup. New options
+  default to on, so nothing changes until you tune it.
+- **Update notifications.** When a new version is available the menu bar icon turns
+  blue and a banner offers it at the top of the panel. Automatic checks are more
+  frequent and also run when you reopen the app, so updates surface on their own.
+
+### Fixed
+- Fixed two mach port leaks in the CPU and memory sampling that could slowly
+  accumulate while the panel was open.
+
 ## [2.9.1] - 2026-06-14
 
 ### Changed

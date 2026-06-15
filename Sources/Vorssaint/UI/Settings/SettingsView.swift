@@ -4,7 +4,7 @@ import SwiftUI
 /// One entry in the Settings sidebar. New features add a case here and a row in
 /// the Features section, so every feature gets its own page.
 enum SettingsPage: Hashable {
-    case general, energy
+    case general, energy, monitor
     case mouse, switcher, cutPaste, autoQuit, uninstaller, shelf
     case advanced, about
 }
@@ -29,6 +29,7 @@ struct SettingsView: View {
             List(selection: $router.page) {
                 Label(l10n.s.tabGeneral, systemImage: "gearshape").tag(SettingsPage.general)
                 Label(l10n.s.tabEnergy, systemImage: "bolt.fill").tag(SettingsPage.energy)
+                Label(l10n.s.tabMonitor, systemImage: "chart.line.uptrend.xyaxis").tag(SettingsPage.monitor)
 
                 Section(l10n.s.settingsGroupFeatures) {
                     Label(l10n.s.tabMouse, systemImage: "computermouse").tag(SettingsPage.mouse)
@@ -57,6 +58,7 @@ struct SettingsView: View {
         switch router.page {
         case .general: GeneralSettings()
         case .energy: EnergySettings()
+        case .monitor: MonitorSettings()
         case .mouse: MouseSettings()
         case .switcher: SwitcherSettings()
         case .cutPaste: CutPasteSettings()

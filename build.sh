@@ -7,8 +7,26 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP_NAME="Vorssaint"
-EXECUTABLE="Vorssaint"
+# Flags: --dev builds the local-only "Vorssaint (Developer)" variant (its own
+# bundle id, so it coexists with the official app); --install puts it in /Applications.
+DEV=0
+INSTALL=0
+TEST=0
+for arg in "$@"; do
+    case "$arg" in
+        --dev)     DEV=1 ;;
+        --install) INSTALL=1 ;;
+        --test)    TEST=1 ;;
+    esac
+done
+
+if (( DEV )); then
+    APP_NAME="Vorssaint (Developer)"
+    EXECUTABLE="VorssaintDeveloper"
+else
+    APP_NAME="Vorssaint"
+    EXECUTABLE="Vorssaint"
+fi
 TARGET="arm64-apple-macosx14.0"
 
 # Prefer the macOS 26 SDK when present: the 27 SDK turns SwiftUI property wrappers
@@ -18,6 +36,20 @@ if [[ -d "$PINNED_SDK" ]]; then
     SDK="$PINNED_SDK"
 else
     SDK="$(xcrun --show-sdk-path)"
+fi
+
+# --test: compile and run the standalone unit tests (pure metric helpers only —
+# no app, no UI, no IOKit), then exit. Fast and deterministic; no XCTest needed.
+if (( TEST )); then
+    echo "▸ Building & running unit tests against $(basename "$SDK")…"
+    rm -rf build
+    mkdir -p build
+    swiftc -O -target "$TARGET" -sdk "$SDK" \
+        Sources/Vorssaint/Services/Metrics/MetricFormat.swift \
+        Tests/MetricsTests.swift \
+        -o build/metrics-tests
+    ./build/metrics-tests
+    exit $?
 fi
 
 echo "▸ Compiling (release) against $(basename "$SDK")…"
@@ -35,6 +67,14 @@ STAGE="$(mktemp -d)/$APP_NAME.app"
 mkdir -p "$STAGE/Contents/MacOS" "$STAGE/Contents/Resources"
 cp "build/$EXECUTABLE" "$STAGE/Contents/MacOS/$EXECUTABLE"
 cp Resources/Info.plist "$STAGE/Contents/Info.plist"
+if (( DEV )); then
+    # A distinct identity so the Developer build installs and runs next to the
+    # official app, with its own permissions, preferences and login item.
+    /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.vorssaint.utils.dev" "$STAGE/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleName Vorssaint (Developer)" "$STAGE/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Vorssaint (Developer)" "$STAGE/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $EXECUTABLE" "$STAGE/Contents/Info.plist"
+fi
 printf 'APPL????' > "$STAGE/Contents/PkgInfo"
 iconutil -c icns build/AppIcon.iconset -o "$STAGE/Contents/Resources/AppIcon.icns"
 cp build/MenuBarIcon.png build/MenuBarIcon@2x.png build/BrandMark.png "$STAGE/Contents/Resources/"
@@ -71,7 +111,7 @@ rm -rf "build/stage/$APP_NAME.app"
 ditto "$STAGE" "build/stage/$APP_NAME.app"
 echo "✓ Bundle ready: build/stage/$APP_NAME.app"
 
-if [[ "${1:-}" == "--install" ]]; then
+if (( INSTALL )); then
     echo "▸ Installing into /Applications…"
     pkill -x "$EXECUTABLE" 2>/dev/null || true
     # Remove the pre-rename apps so two menu bar items never coexist. Same bundle

@@ -11,6 +11,7 @@ final class StatusItemController {
     private(set) var statusItem: NSStatusItem!
     private var cancellables = Set<AnyCancellable>()
     private var titleTimer: Timer?
+    private var defaultsObserver: NSObjectProtocol?
 
     var button: NSStatusBarButton? { statusItem.button }
 
@@ -18,7 +19,9 @@ final class StatusItemController {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusItem.button {
             button.image = BlackHoleGlyph.image(active: false)
-            button.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+            // Fully monospaced (not just digits) so the fixed-width metric fields
+            // keep a constant pixel width and the item never jiggles.
+            button.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
             button.target = self
             button.action = #selector(clicked)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -27,6 +30,8 @@ final class StatusItemController {
 
         bind()
         refresh()
+        syncMonitorMode()
+        updateIconAppearance()
 
         titleTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             self?.refresh()
@@ -37,10 +42,15 @@ final class StatusItemController {
     private func bind() {
         KeepAwakeManager.shared.$isActive
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] active in
-                self?.statusItem.button?.image = BlackHoleGlyph.image(active: active)
+            .sink { [weak self] _ in
+                self?.updateIconAppearance()
                 self?.refresh()
             }
+            .store(in: &cancellables)
+
+        UpdateService.shared.$state
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.updateIconAppearance() }
             .store(in: &cancellables)
 
         KeepAwakeManager.shared.$endDate
@@ -53,10 +63,48 @@ final class StatusItemController {
             .sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
 
-        NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification,
-                                               object: nil,
-                                               queue: .main) { [weak self] _ in
+        SystemMonitor.shared.$snapshot
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard MenuBarMetric.anyEnabled(in: .standard) else { return }
+                self?.refresh()
+            }
+            .store(in: &cancellables)
+
+        defaultsObserver = NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification,
+                                                                  object: nil,
+                                                                  queue: .main) { [weak self] _ in
+            self?.syncMonitorMode()
             self?.refresh()
+        }
+    }
+
+    deinit {
+        // The controller lives for the whole process today, but tear down cleanly
+        // so a future "recreate the status item" path can't leak a firing timer or
+        // a block observer that outlives this instance.
+        titleTimer?.invalidate()
+        if let defaultsObserver { NotificationCenter.default.removeObserver(defaultsObserver) }
+    }
+
+    /// Keeps the background sampler in step with the menu bar settings: it runs
+    /// continuously only while at least one metric is pinned to the menu bar.
+    private func syncMonitorMode() {
+        let defaults = UserDefaults.standard
+        var interval = defaults.integer(forKey: DefaultsKey.monitorInterval)
+        if interval <= 0 { interval = 2 }
+        SystemMonitor.shared.setInterval(seconds: interval)
+        SystemMonitor.shared.setMenuBarActive(MenuBarMetric.anyEnabled(in: defaults))
+    }
+
+    /// Reflects keep-awake state and an available update in the icon: the glyph
+    /// turns blue when there's an update, for a discreet bit of attention.
+    private func updateIconAppearance() {
+        guard let button = statusItem?.button else { return }
+        if case .available = UpdateService.shared.state {
+            button.image = BlackHoleGlyph.attentionImage()
+        } else {
+            button.image = BlackHoleGlyph.image(active: KeepAwakeManager.shared.isActive)
         }
     }
 
@@ -94,21 +142,44 @@ final class StatusItemController {
         guard let button = statusItem?.button else { return }
         let manager = KeepAwakeManager.shared
         let strings = L10n.shared.s
-        let showCountdown = UserDefaults.standard.bool(forKey: DefaultsKey.showCountdown)
+        let defaults = UserDefaults.standard
+        let font = button.font ?? NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
 
-        if manager.isActive, showCountdown {
+        // Compose the title from the keep-awake countdown (when shown) followed by
+        // the pinned live metrics. Built attributed so the memory pressure dot can
+        // carry its green/yellow/red color; all other runs stay adaptive.
+        let title = NSMutableAttributedString()
+        if manager.isActive, defaults.bool(forKey: DefaultsKey.showCountdown) {
+            let countdown: String
             if let end = manager.endDate {
                 let remaining = max(0, Int(end.timeIntervalSinceNow))
                 let hours = remaining / 3600
                 let minutes = (remaining % 3600) / 60
-                button.title = hours > 0 ? String(format: " %d:%02d", hours, minutes) : " \(max(minutes, 1)) min"
+                countdown = hours > 0 ? String(format: "%d:%02d", hours, minutes) : "\(max(minutes, 1)) min"
             } else {
-                button.title = " ∞"
+                countdown = "∞"
             }
-        } else {
-            button.title = ""
+            title.append(NSAttributedString(string: countdown))
         }
-        button.imagePosition = button.title.isEmpty ? .imageOnly : .imageLeading
+        let metrics = MenuBarMetric.enabled(in: defaults)
+        if !metrics.isEmpty {
+            let metricsTitle = MenuBarRenderer.attributed(for: SystemMonitor.shared.snapshot, metrics: metrics)
+            if metricsTitle.length > 0 {
+                if title.length > 0 { title.append(NSAttributedString(string: "  ")) }
+                title.append(metricsTitle)
+            }
+        }
+
+        if title.length == 0 {
+            button.attributedTitle = NSAttributedString(string: "")
+            button.imagePosition = .imageOnly
+        } else {
+            let full = NSMutableAttributedString(string: " ")
+            full.append(title)
+            full.addAttribute(.font, value: font, range: NSRange(location: 0, length: full.length))
+            button.attributedTitle = full
+            button.imagePosition = .imageLeading
+        }
 
         if manager.isActive {
             if let end = manager.endDate {
@@ -158,6 +229,20 @@ enum BlackHoleGlyph {
         }
         dimmed.isTemplate = true
         return dimmed
+    }
+
+    /// A blue, full-strength glyph used to flag an available update. Non-template
+    /// (a real color), drawn by masking blue into the glyph's shape.
+    static func attentionImage() -> NSImage? {
+        guard let base else { return fallback(active: true) }
+        let tinted = NSImage(size: base.size, flipped: false) { rect in
+            base.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+            NSColor.systemBlue.setFill()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        tinted.isTemplate = false
+        return tinted
     }
 
     /// Keeps a recognizable presence if the bundled asset is ever missing
