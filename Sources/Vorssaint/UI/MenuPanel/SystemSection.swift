@@ -30,8 +30,7 @@ struct SystemSection: View {
             if visibleBlocks.isEmpty {
                 EmptyView()
             } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    sectionTitle(l10n.s.systemSection)
+                PanelSection(.system, title: l10n.s.systemSection) {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(Array(visibleBlocks.enumerated()), id: \.element) { index, block in
                             if index > 0 { Divider() }

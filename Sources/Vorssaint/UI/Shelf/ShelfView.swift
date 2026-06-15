@@ -23,7 +23,7 @@ struct ShelfView: View {
         }
         .padding(12)
         .frame(width: 360)
-        .background(HUDBackdrop())
+        .background(HUDBackdrop(cornerRadius: 18))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous)

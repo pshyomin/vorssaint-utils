@@ -15,8 +15,7 @@ struct PowerSection: View {
     var body: some View {
         Group {
             if shouldShow {
-                VStack(alignment: .leading, spacing: 8) {
-                    sectionTitle(l10n.s.powerSection)
+                PanelSection(.power, title: l10n.s.powerSection) {
                     VStack(alignment: .leading, spacing: 10) {
                         content
                     }

@@ -34,16 +34,38 @@ struct ShortcutCaps: View {
     }
 }
 
-/// Translucent HUD material behind floating panels (the shelf, the cut-feedback
-/// HUD). Mirrors the switcher's backdrop so every floating surface matches.
+/// Translucent HUD material behind floating panels (the shelf, the switcher, the
+/// cut-feedback HUD). Mirrors the switcher's backdrop so every floating surface
+/// matches.
+///
+/// The corner radius rounds the effect view's own layer, which matters for the
+/// behind-window blur: SwiftUI's `.clipShape` rounds the drawn content but does
+/// not clip an `NSVisualEffectView`'s behind-window material, so the blur (and
+/// the borderless window's shadow, computed from it) keeps the full rectangular
+/// bounds. Against a contrasty desktop that rectangle reads as a faint extra
+/// outline just outside the rounded card, and whether it shows depends on what
+/// is behind the window, which is why it looks intermittent. Clipping the layer
+/// to the same radius as the card removes it. Pass the card's corner radius.
 struct HUDBackdrop: NSViewRepresentable {
+    var cornerRadius: CGFloat = 0
+
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.material = .hudWindow
         view.blendingMode = .behindWindow
         view.state = .active
+        apply(to: view)
         return view
     }
 
-    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        apply(to: nsView)
+    }
+
+    private func apply(to view: NSVisualEffectView) {
+        view.wantsLayer = true
+        view.layer?.cornerRadius = cornerRadius
+        view.layer?.cornerCurve = .continuous
+        view.layer?.masksToBounds = true
+    }
 }

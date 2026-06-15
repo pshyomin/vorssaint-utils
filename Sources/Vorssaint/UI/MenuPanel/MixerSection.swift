@@ -9,8 +9,7 @@ struct MixerSection: View {
     @ObservedObject private var mixer = AppVolumeMixer.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sectionTitle(l10n.s.mixerSection)
+        PanelSection(.mixer, title: l10n.s.mixerSection) {
             VStack(alignment: .leading, spacing: 8) {
                 if !AppVolumeMixer.isSupported {
                     emptyLabel(l10n.s.mixerUnavailable)

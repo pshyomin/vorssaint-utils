@@ -18,7 +18,7 @@ struct SwitcherView: View {
             }
         }
         .padding(SwitcherGrid.padding)
-        .background(HUDBackdrop())
+        .background(HUDBackdrop(cornerRadius: 24))
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)

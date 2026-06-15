@@ -16,8 +16,7 @@ struct NetworkSection: View {
             if visibleBlocks.isEmpty {
                 EmptyView()
             } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    sectionTitle(l10n.s.networkSection)
+                PanelSection(.network, title: l10n.s.networkSection) {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(Array(visibleBlocks.enumerated()), id: \.element) { index, block in
                             if index > 0 { Divider() }

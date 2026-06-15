@@ -22,6 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         // quitting to relaunch under the new name, so skip the rest of startup.
         if BundleMigration.run() { return }
 
+        // An accessory (LSUIElement) app gets no default main menu, so the standard
+        // keyboard shortcuts (Cmd+H/M/W/Q and the Edit shortcuts Cmd+C/V/X/A) have
+        // no menu items to fire and do nothing in the Settings window. Install one.
+        installMainMenu()
+
         statusController = StatusItemController()
         statusController.onLeftClick = { [weak self] in self?.togglePopover() }
         statusController.onRightClick = { [weak self] in self?.showContextMenu() }
@@ -57,11 +62,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             }
             .store(in: &cancellables)
 
+        // Keep the menu titles in step with the in-app language.
+        L10n.shared.$language
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.installMainMenu() }
+            .store(in: &cancellables)
+
         if !UserDefaults.standard.bool(forKey: DefaultsKey.hasOnboarded) {
             showOnboarding(mode: .full)
-        } else if UserDefaults.standard.integer(forKey: DefaultsKey.featuresOnboardingVersion) < OnboardingInfo.currentFeatureSet {
-            // Existing users see a short tour once, to discover and configure
-            // this version's new features.
+        } else if UserDefaults.standard.string(forKey: DefaultsKey.lastUpdatePromptVersion) != AppInfo.version {
+            // After every update to a new version, show the short post-update note
+            // once.
             showOnboarding(mode: .whatsNew)
         }
     }
@@ -345,6 +357,85 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
     }
 
+    // MARK: - Application menu
+
+    /// Builds and installs the standard application menu (App / Edit / Window).
+    ///
+    /// Because the app runs as an accessory, AppKit never gives it the default main
+    /// menu a regular app gets, so `NSApp.mainMenu` stays nil and the standard key
+    /// equivalents (which live on menu items) never resolve. That is why nothing
+    /// happens for Cmd+H/M/W/Q or Cmd+C/V/X/A inside the Settings window. A minimal
+    /// standard menu restores them. The menu bar only appears while one of the
+    /// app's own windows is focused; otherwise the app is as invisible as before.
+    /// Most items use the responder chain (nil target) so they act on the key
+    /// window or the focused text field; About and Settings route to our handlers.
+    func installMainMenu() {
+        let strings = L10n.shared.s
+        let mainMenu = NSMenu()
+
+        // Application menu (the bold, app-named first menu).
+        let appMenuItem = NSMenuItem()
+        mainMenu.addItem(appMenuItem)
+        let appMenu = NSMenu()
+        appMenuItem.submenu = appMenu
+
+        let about = NSMenuItem(title: strings.menuAbout, action: #selector(showAbout), keyEquivalent: "")
+        about.target = self
+        appMenu.addItem(about)
+        appMenu.addItem(.separator())
+
+        let settings = NSMenuItem(title: strings.menuSettings, action: #selector(menuOpenSettings), keyEquivalent: ",")
+        settings.target = self
+        appMenu.addItem(settings)
+        appMenu.addItem(.separator())
+
+        appMenu.addItem(NSMenuItem(title: strings.menuHide,
+                                   action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
+        let hideOthers = NSMenuItem(title: strings.menuHideOthers,
+                                    action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        hideOthers.keyEquivalentModifierMask = [.command, .option]
+        appMenu.addItem(hideOthers)
+        appMenu.addItem(NSMenuItem(title: strings.menuShowAll,
+                                   action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: ""))
+        appMenu.addItem(.separator())
+        appMenu.addItem(NSMenuItem(title: strings.menuQuit,
+                                   action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+
+        // Edit menu, so text fields in Settings respond to the editing shortcuts.
+        let editMenuItem = NSMenuItem()
+        mainMenu.addItem(editMenuItem)
+        let editMenu = NSMenu(title: strings.menuEdit)
+        editMenuItem.submenu = editMenu
+
+        editMenu.addItem(NSMenuItem(title: strings.menuUndo, action: Selector(("undo:")), keyEquivalent: "z"))
+        let redo = NSMenuItem(title: strings.menuRedo, action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        editMenu.addItem(redo)
+        editMenu.addItem(.separator())
+        editMenu.addItem(NSMenuItem(title: strings.menuCut, action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
+        editMenu.addItem(NSMenuItem(title: strings.menuCopy, action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: strings.menuPaste, action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem(title: strings.menuSelectAll, action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+
+        // Window menu (Minimize / Zoom / Close). Settings is .miniaturizable so
+        // Cmd+M actually minimizes; AppKit manages enabling once windowsMenu is set.
+        let windowMenuItem = NSMenuItem()
+        mainMenu.addItem(windowMenuItem)
+        let windowMenu = NSMenu(title: strings.menuWindow)
+        windowMenuItem.submenu = windowMenu
+
+        windowMenu.addItem(NSMenuItem(title: strings.menuMinimize,
+                                      action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m"))
+        windowMenu.addItem(NSMenuItem(title: strings.menuZoom,
+                                      action: #selector(NSWindow.performZoom(_:)), keyEquivalent: ""))
+        windowMenu.addItem(.separator())
+        windowMenu.addItem(NSMenuItem(title: strings.menuClose,
+                                      action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
+
+        NSApp.mainMenu = mainMenu
+        NSApp.windowsMenu = windowMenu
+    }
+
     // MARK: - Windows
 
     func openSettingsWindow() {
@@ -353,7 +444,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         if settingsWindow == nil {
             let host = NSHostingController(rootView: SettingsView())
             let window = NSWindow(contentViewController: host)
-            window.styleMask = [.titled, .closable]
+            // .miniaturizable so the Window menu's Minimize (Cmd+M) actually works.
+            window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
             window.center()
             settingsWindow = window
@@ -421,5 +513,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     private func markOnboardingComplete() {
         UserDefaults.standard.set(true, forKey: DefaultsKey.hasOnboarded)
         UserDefaults.standard.set(OnboardingInfo.currentFeatureSet, forKey: DefaultsKey.featuresOnboardingVersion)
+        // Stamp the current version so the post-update note shows once per new version.
+        UserDefaults.standard.set(AppInfo.version, forKey: DefaultsKey.lastUpdatePromptVersion)
     }
 }

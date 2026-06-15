@@ -16,11 +16,11 @@ private struct PanelHeightKey: PreferenceKey {
 struct MenuPanelView: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var awake = KeepAwakeManager.shared
-    @AppStorage(DefaultsKey.hotkeyEnabled) private var hotkeyEnabled = true
     @AppStorage(DefaultsKey.monitorShowMixer) private var showMixer = true
     @AppStorage(DefaultsKey.monitorShowSystem) private var showSystem = true
     @AppStorage(DefaultsKey.monitorShowNetwork) private var showNetwork = true
     @AppStorage(DefaultsKey.monitorShowPower) private var showPower = true
+    @AppStorage(DefaultsKey.panelSectionOrder) private var sectionOrderRaw = ""
     @State private var contentHeight: CGFloat = 0
 
     /// Cap the panel to the usable screen height so it never overflows the menu
@@ -34,12 +34,9 @@ struct MenuPanelView: View {
             VStack(alignment: .leading, spacing: 12) {
                 UpdateBanner()
                 header
-                KeepAwakeCard()
-                cleaningButton
-                if showMixer { MixerSection() }
-                if showSystem { SystemSection() }
-                if showNetwork { NetworkSection() }
-                if showPower { PowerSection() }
+                ForEach(orderedSections) { id in
+                    section(for: id)
+                }
                 footer
             }
             .padding(12)
@@ -48,6 +45,11 @@ struct MenuPanelView: View {
                 Color.clear.preference(key: PanelHeightKey.self, value: proxy.size.height)
             })
         }
+        // Hide the scroll indicator: with the system set to always show scroll bars,
+        // a legacy ~17pt scroller is reserved on the right, which pushed the content
+        // left and left an uneven gap against the popover edge. Trackpad and wheel
+        // scrolling still work, and collapsible sections keep the panel short.
+        .scrollIndicators(.hidden)
         // Before the first measurement, start from a compact estimate (not maxHeight)
         // so the popover grows slightly into place rather than opening full-screen-tall
         // and snapping down on first use.
@@ -58,35 +60,36 @@ struct MenuPanelView: View {
         }
     }
 
-    /// Starts cleaning mode and closes the panel so the lock overlay is the only
-    /// thing on screen. The right-click menu offers the same action.
-    private var cleaningButton: some View {
-        Button {
-            // Close the panel first so, if activate() has to show the Accessibility
-            // alert, it isn't stranded on top of the still-open panel.
-            appDelegate()?.closePopover()
-            CleaningModeManager.shared.activate()
-        } label: {
-            HStack(spacing: 9) {
-                Image(systemName: "keyboard")
-                    .font(.system(size: 13))
-                Text(l10n.s.cleaningMenuItem)
-                    .font(.system(size: 12, weight: .medium))
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.primary.opacity(0.06))
-            )
-            .contentShape(Rectangle())
+    /// The major sections in the user's saved order. Reading `sectionOrderRaw`
+    /// (the @AppStorage backing) establishes the dependency so reordering in
+    /// Settings refreshes the live panel; PanelLayout fills in any sections the
+    /// saved order omits.
+    private var orderedSections: [PanelSectionID] {
+        _ = sectionOrderRaw
+        return PanelLayout.order
+    }
+
+    /// Renders the section for an id, honoring its "show in panel" toggle. Each
+    /// section self-hides when it has nothing to show, so the order is stable
+    /// whether or not a section is currently populated.
+    @ViewBuilder
+    private func section(for id: PanelSectionID) -> some View {
+        switch id {
+        case .keepAwake: KeepAwakeCard()
+        case .mixer: if showMixer { MixerSection() }
+        case .system: if showSystem { SystemSection() }
+        case .network: if showNetwork { NetworkSection() }
+        case .power: if showPower { PowerSection() }
         }
-        .buttonStyle(.plain)
+    }
+
+    /// Starts cleaning mode and closes the panel so the lock overlay is the only
+    /// thing on screen. The footer button and the right-click menu both call this.
+    private func startCleaning() {
+        // Close the panel first so, if activate() has to show the Accessibility
+        // alert, it isn't stranded on top of the still-open panel.
+        appDelegate()?.closePopover()
+        CleaningModeManager.shared.activate()
     }
 
     private var header: some View {
@@ -114,35 +117,29 @@ struct MenuPanelView: View {
 
     private var footer: some View {
         HStack {
-            Button {
+            footerButton(l10n.s.panelSettings, systemImage: "gearshape") {
                 appDelegate()?.openSettingsWindow()
-            } label: {
-                Label(l10n.s.panelSettings, systemImage: "gearshape")
-                    .font(.system(size: 11))
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-
             Spacer()
-
-            if hotkeyEnabled {
-                Text(l10n.s.panelHotkeyHint)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+            footerButton(l10n.s.cleaningMenuItem, systemImage: "keyboard") {
+                startCleaning()
             }
-
             Spacer()
-
-            Button {
+            footerButton(l10n.s.panelQuit, systemImage: "power") {
                 NSApp.terminate(nil)
-            } label: {
-                Label(l10n.s.panelQuit, systemImage: "power")
-                    .font(.system(size: 11))
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
         }
         .padding(.top, 2)
+    }
+
+    private func footerButton(_ title: String, systemImage: String,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.system(size: 11))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
     }
 }
 
@@ -220,46 +217,46 @@ struct KeepAwakeCard: View {
     @AppStorage(DefaultsKey.defaultDuration) private var defaultDuration: Int = 0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(l10n.s.keepAwakeTitle)
-                        .font(.system(size: 13, weight: .semibold))
-                    statusLine
-                }
-                Spacer()
-                Toggle("", isOn: activeBinding)
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-            }
-
-            if awake.isActive, awake.endDate != nil {
-                HStack(spacing: 6) {
-                    extendButton(15)
-                    extendButton(30)
-                    extendButton(60)
-                    Spacer()
-                }
-            }
-
-            if !awake.isActive {
+        // The collapsible header supplies the "Keep awake" title, so the card's
+        // first row is just the live status and the on/off switch.
+        PanelSection(.keepAwake, title: l10n.s.keepAwakeTitle) {
+            VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text(l10n.s.durationLabel)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                    statusLine
                     Spacer()
-                    DurationPicker(selection: $defaultDuration)
+                    Toggle("", isOn: activeBinding)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
                 }
+
+                if awake.isActive, awake.endDate != nil {
+                    HStack(spacing: 6) {
+                        extendButton(15)
+                        extendButton(30)
+                        extendButton(60)
+                        Spacer()
+                    }
+                }
+
+                if !awake.isActive {
+                    HStack {
+                        Text(l10n.s.durationLabel)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        DurationPicker(selection: $defaultDuration)
+                    }
+                }
+
+                Divider()
+
+                optionRow(title: l10n.s.clamshellTitle,
+                          caption: clamshellCaption,
+                          isOn: $awake.clamshellPreferred,
+                          disabled: false)
             }
-
-            Divider()
-
-            optionRow(title: l10n.s.clamshellTitle,
-                      caption: clamshellCaption,
-                      isOn: $awake.clamshellPreferred,
-                      disabled: false)
+            .panelCard()
         }
-        .panelCard()
     }
 
     private var statusLine: some View {

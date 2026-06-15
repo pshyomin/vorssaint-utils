@@ -55,6 +55,23 @@ struct Strings {
     let menuSettings: String
     let menuAbout: String
     let menuQuit: String
+    // Standard application menu bar (App / Edit / Window) shown while one of the
+    // app's own windows is focused. Without it, an accessory app has no main menu
+    // and the standard shortcuts (Cmd+H/M/W/Q, Cmd+C/V/X/A) do nothing.
+    let menuHide: String
+    let menuHideOthers: String
+    let menuShowAll: String
+    let menuEdit: String
+    let menuUndo: String
+    let menuRedo: String
+    let menuCut: String
+    let menuCopy: String
+    let menuPaste: String
+    let menuSelectAll: String
+    let menuWindow: String
+    let menuMinimize: String
+    let menuZoom: String
+    let menuClose: String
 
     // MARK: Durations
     let minutes15: String
@@ -400,6 +417,8 @@ struct Strings {
     let monitorItemNetTotals: String
     let monitorItemNetTest: String
     let monitorPanelConfigHint: String
+    let monitorOrderSection: String
+    let monitorOrderHint: String
     let obStepPanelTitle: String
     let obStepPanelBody: String
 
@@ -436,6 +455,20 @@ extension Strings {
         menuSettings: "Ajustes…",
         menuAbout: "Sobre o Vorssaint",
         menuQuit: "Sair do Vorssaint",
+        menuHide: "Ocultar o Vorssaint",
+        menuHideOthers: "Ocultar Outros",
+        menuShowAll: "Mostrar Tudo",
+        menuEdit: "Editar",
+        menuUndo: "Desfazer",
+        menuRedo: "Refazer",
+        menuCut: "Recortar",
+        menuCopy: "Copiar",
+        menuPaste: "Colar",
+        menuSelectAll: "Selecionar Tudo",
+        menuWindow: "Janela",
+        menuMinimize: "Minimizar",
+        menuZoom: "Zoom",
+        menuClose: "Fechar",
 
         minutes15: "15 minutos",
         minutes30: "30 minutos",
@@ -752,6 +785,8 @@ extension Strings {
         monitorItemNetTotals: "Totais da sessão",
         monitorItemNetTest: "Teste de velocidade",
         monitorPanelConfigHint: "Abra um bloco para escolher o que ele mostra.",
+        monitorOrderSection: "Ordem das seções",
+        monitorOrderHint: "Arraste para reordenar as seções do painel. Use o chevron de cada seção no painel para recolher.",
         obStepPanelTitle: "O que aparece no painel",
         obStepPanelBody: "Abra cada bloco e escolha exatamente o que mostrar quando você clica no ícone.",
 
@@ -768,7 +803,7 @@ extension Strings {
         donateMessage: "Todos os meus projetos públicos são, e sempre serão, totalmente gratuitos: sem assinatura, sem anúncios. O apoio da comunidade é a única forma de manter tudo vivo. Se o Vorssaint te ajuda, um café faz diferença de verdade.",
         donateButton: "Buy me a coffee",
         donateThanks: "Obrigado por estar aqui. 🖤",
-        obStepDonateTitle: "Agora dá pra apoiar 🖤",
+        obStepDonateTitle: "Curtindo o Vorssaint? 🖤",
         showMenuBarIcon: "Mostrar ícone na barra de menus",
         showMenuBarIconCaption: "Se o ícone do Vorssaint sumir (o macOS pode esconder ícones quando a barra de menus fica sem espaço, comum em Macs com notch), reabra o Vorssaint pela pasta Aplicativos ou pelo Spotlight: isso recria o ícone e, se ele ainda estiver escondido, abre esta janela. O botão acima faz o mesmo quando você já consegue chegar aqui. Manter menos ícones na barra, ou menos métricas no Vorssaint, reduz bastante a chance."
     )
@@ -787,6 +822,20 @@ extension Strings {
         menuSettings: "Settings…",
         menuAbout: "About Vorssaint",
         menuQuit: "Quit Vorssaint",
+        menuHide: "Hide Vorssaint",
+        menuHideOthers: "Hide Others",
+        menuShowAll: "Show All",
+        menuEdit: "Edit",
+        menuUndo: "Undo",
+        menuRedo: "Redo",
+        menuCut: "Cut",
+        menuCopy: "Copy",
+        menuPaste: "Paste",
+        menuSelectAll: "Select All",
+        menuWindow: "Window",
+        menuMinimize: "Minimize",
+        menuZoom: "Zoom",
+        menuClose: "Close",
 
         minutes15: "15 minutes",
         minutes30: "30 minutes",
@@ -1103,6 +1152,8 @@ extension Strings {
         monitorItemNetTotals: "Session totals",
         monitorItemNetTest: "Speed test",
         monitorPanelConfigHint: "Open a block to choose what it shows.",
+        monitorOrderSection: "Section order",
+        monitorOrderHint: "Drag to reorder the panel sections. Use each section's chevron in the panel to collapse it.",
         obStepPanelTitle: "What's in the panel",
         obStepPanelBody: "Open each block and pick exactly what shows when you click the icon.",
 
@@ -1119,7 +1170,7 @@ extension Strings {
         donateMessage: "Every one of my public projects is, and always will be, completely free: no subscription, no ads. Community support is the only thing that keeps it alive. If Vorssaint helps you, a coffee genuinely makes a difference.",
         donateButton: "Buy me a coffee",
         donateThanks: "Thank you for being here. 🖤",
-        obStepDonateTitle: "You can support the project now 🖤",
+        obStepDonateTitle: "Enjoying Vorssaint? 🖤",
         showMenuBarIcon: "Show menu bar icon",
         showMenuBarIconCaption: "If Vorssaint's icon disappears (macOS can hide menu bar icons when the bar runs out of room, common on Macs with a notch), reopen Vorssaint from Applications or Spotlight: that rebuilds the icon and, if it's still hidden, opens this window. The button above does the same when you can already get here. Keeping fewer menu bar icons, or fewer Vorssaint metrics, makes it far less likely."
     )

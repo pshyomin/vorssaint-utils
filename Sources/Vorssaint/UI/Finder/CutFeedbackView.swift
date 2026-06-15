@@ -19,7 +19,7 @@ struct CutFeedbackView: View {
         }
         .padding(14)
         .frame(width: 286)
-        .background(HUDBackdrop())
+        .background(HUDBackdrop(cornerRadius: 16))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)

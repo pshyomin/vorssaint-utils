@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.13.0] - 2026-06-15
+
+### Added
+- **Make the panel yours.** Collapse any section you don't use with a tap on its
+  header, and drag to reorder the sections from Settings › Monitor. The panel shows
+  what matters to you first, with less scrolling.
+
+### Changed
+- Cleaning Mode moved into the panel's footer, alongside Settings and Quit.
+
+### Fixed
+- **Keyboard shortcuts work in the Settings window.** Cmd+W, Cmd+M, Cmd+H and Cmd+Q,
+  plus cut, copy, paste and select all in text fields, now respond as expected.
+- Removed an occasional extra outline around the Shelf, and evened out the panel's
+  spacing so it no longer sits closer to one edge.
+
 ## [2.12.0] - 2026-06-15
 
 ### Added

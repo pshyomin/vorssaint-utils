@@ -55,6 +55,12 @@ struct MonitorSettings: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section(l10n.s.monitorOrderSection) {
+                PanelOrderEditor()
+                Text(l10n.s.monitorOrderHint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section(l10n.s.monitorGraphsSection) {
                 Toggle(l10n.s.monitorShowCPU, isOn: $graphCPU)
                 Toggle(l10n.s.monitorShowGPU, isOn: $graphGPU)
@@ -68,5 +74,37 @@ struct MonitorSettings: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// Drag-to-reorder list for the panel's major sections. Writes the new order to
+/// `PanelLayout`, which the live panel observes. A bounded, non-scrolling list so
+/// it sits inside the grouped Form without its own scroll area.
+private struct PanelOrderEditor: View {
+    @ObservedObject private var l10n = L10n.shared
+    @State private var order: [PanelSectionID] = PanelLayout.order
+
+    var body: some View {
+        List {
+            ForEach(order) { id in
+                HStack(spacing: 8) {
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                    Text(id.title(l10n.s))
+                    Spacer()
+                }
+            }
+            .onMove { from, to in
+                order.move(fromOffsets: from, toOffset: to)
+                PanelLayout.setOrder(order)
+            }
+        }
+        .listStyle(.plain)
+        .scrollDisabled(true)
+        // Headroom so the longer pt-BR titles don't clip a row; the Settings
+        // window is reused, so re-read the stored order each time the page shows.
+        .frame(height: CGFloat(order.count) * 32 + 12)
+        .onAppear { order = PanelLayout.order }
     }
 }

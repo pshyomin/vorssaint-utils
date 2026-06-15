@@ -6,6 +6,7 @@ enum DefaultsKey {
     static let clamshellPreferred = "clamshellPreferred"  // apply closed-lid mode to every session
     static let onboardingStep = "onboardingStep"          // resume point if onboarding is interrupted
     static let featuresOnboardingVersion = "featuresOnboardingVersion" // last feature-tour version the user saw
+    static let lastUpdatePromptVersion = "lastUpdatePromptVersion"     // app version that last showed the post-update note
     static let defaultDuration = "defaultDurationMinutes" // 0 = indefinite
     static let batteryLimit = "batteryLimitPercent"       // 0 = never
     static let hotkeyEnabled = "hotkeyEnabled"
@@ -57,6 +58,11 @@ enum DefaultsKey {
     static let monitorPwrAdapter = "monitorPwrAdapter"
     static let monitorPwrBattery = "monitorPwrBattery"
     static let monitorPwrHealth = "monitorPwrHealth"
+    // Menu panel layout — the order the major sections appear in and which are
+    // collapsed, both comma-joined section ids (see PanelSectionID). Absent keys
+    // mean the canonical order and nothing collapsed, so no defaults registration.
+    static let panelSectionOrder = "panelSectionOrder"
+    static let panelCollapsedSections = "panelCollapsedSections"
 
     // Dev-build only: force the "update available" UI for local testing.
     static let simulateUpdate = "simulateUpdate"

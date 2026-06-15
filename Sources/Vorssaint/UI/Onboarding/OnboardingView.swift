@@ -17,9 +17,8 @@ enum OnboardingMode {
                     .panelSetup, .optionalFeatures, .cutPaste, .autoQuit, .uninstaller, .shelf,
                     .status, .donate, .done]
         case .whatsNew:
-            // This version's headline is donation support: a short, gentle
-            // announcement that the project now accepts coffees (and stays free),
-            // then wrap up.
+            // Shown once after each update: a short, gentle reminder that the
+            // project stays free and runs on community support, then wrap up.
             return [.donate, .done]
         }
     }
