@@ -72,6 +72,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         KeepAwakeManager.shared.deactivate(reason: .quit)
     }
 
+    /// The lifeline when the menu bar icon goes missing. Opening the app again
+    /// from Finder, Spotlight or Launchpad while it's already running lands here:
+    /// force the icon back and pop the panel so there's immediate proof the app is
+    /// alive. Without this, a hidden icon would strand the app running with no way
+    /// in. (A cold launch can't happen while running, so this is the recovery path.)
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        statusController?.statusItem.isVisible = true
+        if !flag, !popover.isShown {
+            // A deliberate reopen should always present the panel, so clear the
+            // just-dismissed debounce that togglePopover() would otherwise honor.
+            popoverClosedAt = .distantPast
+            togglePopover()
+        }
+        return true
+    }
+
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }
 
     private func bindManagers() {
@@ -185,6 +201,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     // MARK: - Context menu (right click)
 
     private func showContextMenu() {
+        // The panel uses applicationDefined dismissal, so a right-click while it's
+        // open won't close it on its own — and the menu would try to open behind it.
+        // Close it first so the context menu always appears.
+        if popover.isShown { popover.performClose(nil) }
+
         let manager = KeepAwakeManager.shared
         let strings = L10n.shared.s
         let menu = NSMenu()
@@ -211,6 +232,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             durationsItem.submenu = submenu
             menu.addItem(durationsItem)
         }
+
+        let cleaningItem = NSMenuItem(title: strings.cleaningMenuItem,
+                                      action: #selector(menuCleaningMode), keyEquivalent: "")
+        cleaningItem.target = self
+        menu.addItem(cleaningItem)
 
         menu.addItem(.separator())
 
@@ -253,6 +279,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     @objc private func menuToggleAwake() {
         KeepAwakeManager.shared.toggle()
+    }
+
+    @objc private func menuCleaningMode() {
+        CleaningModeManager.shared.activate()
     }
 
     @objc private func menuActivateDuration(_ sender: NSMenuItem) {

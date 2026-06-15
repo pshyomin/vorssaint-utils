@@ -17,6 +17,13 @@ final class StatusItemController {
 
     init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        // The menu bar item is the app's only entry point, so it must never be
+        // lost for good. An empty behavior set keeps it from being dragged off the
+        // bar (reordering still works), and forcing isVisible undoes any hidden
+        // state macOS may have persisted from a previous removal. If it ever does
+        // go missing, re-opening the app restores it (see applicationShouldHandleReopen).
+        statusItem.behavior = []
+        statusItem.isVisible = true
         if let button = statusItem.button {
             button.image = BlackHoleGlyph.image(active: false)
             // Fully monospaced (not just digits) so the fixed-width metric fields

@@ -76,11 +76,15 @@ final class PowerSampler {
             }
             if let cycles = props["CycleCount"] as? Int { reading.cycleCount = cycles }
             if let design = props["DesignCapacity"] as? Int, design > 0 {
-                // AppleRawMaxCapacity is the real full-charge capacity now; older
-                // chips expose it as NominalChargeCapacity.
-                let rawMax = (props["AppleRawMaxCapacity"] as? Int) ?? (props["NominalChargeCapacity"] as? Int)
-                if let rawMax, rawMax > 0 {
-                    reading.healthPercent = min(100, Double(rawMax) / Double(design) * 100)
+                // Match the "Maximum Capacity" macOS reports in System Information.
+                // On Apple Silicon that figure tracks NominalChargeCapacity, a
+                // smoothed full-charge capacity that reads a few points higher than
+                // the raw AppleRawMaxCapacity (which is what we used before, and what
+                // made the app show a lower number than System Report). Fall back to
+                // the raw value only when the nominal one is missing.
+                let fullCharge = (props["NominalChargeCapacity"] as? Int) ?? (props["AppleRawMaxCapacity"] as? Int)
+                if let fullCharge, fullCharge > 0 {
+                    reading.healthPercent = min(100, Double(fullCharge) / Double(design) * 100)
                 }
             }
         }

@@ -402,6 +402,15 @@ struct Strings {
     let monitorPanelConfigHint: String
     let obStepPanelTitle: String
     let obStepPanelBody: String
+
+    // MARK: Cleaning mode
+    let cleaningMenuItem: String
+    let cleaningOverlayTitle: String
+    let cleaningOverlaySubtitle: String
+    let cleaningOverlayUnlock: String
+    let cleaningOverlayMouseHint: String
+    let cleaningNeedsAxTitle: String
+    let cleaningNeedsAxBody: String
 }
 
 // MARK: - Português (Brasil)
@@ -734,7 +743,15 @@ extension Strings {
         monitorItemNetTest: "Teste de velocidade",
         monitorPanelConfigHint: "Abra um bloco para escolher o que ele mostra.",
         obStepPanelTitle: "O que aparece no painel",
-        obStepPanelBody: "Abra cada bloco e escolha exatamente o que mostrar quando você clica no ícone."
+        obStepPanelBody: "Abra cada bloco e escolha exatamente o que mostrar quando você clica no ícone.",
+
+        cleaningMenuItem: "Modo de limpeza",
+        cleaningOverlayTitle: "Teclado bloqueado para limpeza",
+        cleaningOverlaySubtitle: "Pressione a mesma tecla 5 vezes para desbloquear",
+        cleaningOverlayUnlock: "Desbloquear",
+        cleaningOverlayMouseHint: "O mouse e o trackpad continuam funcionando",
+        cleaningNeedsAxTitle: "Precisa de Acessibilidade",
+        cleaningNeedsAxBody: "Para bloquear o teclado com segurança, o Vorssaint precisa da permissão de Acessibilidade. Conceda em Ajustes do Sistema e tente de novo."
     )
 }
 
@@ -1068,6 +1085,14 @@ extension Strings {
         monitorItemNetTest: "Speed test",
         monitorPanelConfigHint: "Open a block to choose what it shows.",
         obStepPanelTitle: "What's in the panel",
-        obStepPanelBody: "Open each block and pick exactly what shows when you click the icon."
+        obStepPanelBody: "Open each block and pick exactly what shows when you click the icon.",
+
+        cleaningMenuItem: "Cleaning Mode",
+        cleaningOverlayTitle: "Keyboard locked for cleaning",
+        cleaningOverlaySubtitle: "Press the same key 5 times to unlock",
+        cleaningOverlayUnlock: "Unlock",
+        cleaningOverlayMouseHint: "Your mouse and trackpad still work",
+        cleaningNeedsAxTitle: "Accessibility needed",
+        cleaningNeedsAxBody: "To lock the keyboard safely, Vorssaint needs Accessibility permission. Grant it in System Settings and try again."
     )
 }

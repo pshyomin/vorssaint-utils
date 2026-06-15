@@ -35,6 +35,7 @@ struct MenuPanelView: View {
                 UpdateBanner()
                 header
                 KeepAwakeCard()
+                cleaningButton
                 if showMixer { MixerSection() }
                 if showSystem { SystemSection() }
                 if showNetwork { NetworkSection() }
@@ -55,6 +56,37 @@ struct MenuPanelView: View {
         .onAppear {
             awake.refreshPasswordlessStatus()
         }
+    }
+
+    /// Starts cleaning mode and closes the panel so the lock overlay is the only
+    /// thing on screen. The right-click menu offers the same action.
+    private var cleaningButton: some View {
+        Button {
+            // Close the panel first so, if activate() has to show the Accessibility
+            // alert, it isn't stranded on top of the still-open panel.
+            appDelegate()?.closePopover()
+            CleaningModeManager.shared.activate()
+        } label: {
+            HStack(spacing: 9) {
+                Image(systemName: "keyboard")
+                    .font(.system(size: 13))
+                Text(l10n.s.cleaningMenuItem)
+                    .font(.system(size: 12, weight: .medium))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.primary.opacity(0.06))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var header: some View {

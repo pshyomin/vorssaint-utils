@@ -46,6 +46,7 @@ if (( TEST )); then
     mkdir -p build
     swiftc -O -target "$TARGET" -sdk "$SDK" \
         Sources/Vorssaint/Services/Metrics/MetricFormat.swift \
+        Sources/Vorssaint/Services/CleaningMode/CleaningUnlockCounter.swift \
         Tests/MetricsTests.swift \
         -o build/metrics-tests
     ./build/metrics-tests

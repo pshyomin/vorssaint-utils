@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.11.0] - 2026-06-15
+
+### Added
+- **Cleaning Mode.** Locks the keyboard so you can wipe it down without typing
+  anything by accident. Unlock by pressing the same key five times in a row, by
+  clicking Unlock on the overlay, or just by waiting, since it releases on its own
+  after a minute. Start it from the panel or the icon's menu.
+
+### Fixed
+- **Battery health now matches macOS.** The health percentage lines up with the
+  "Maximum Capacity" shown in System Information.
+- **Removing the menu bar icon no longer locks you out.** The icon can't be dragged
+  off the bar by accident, it always comes back on launch, and reopening the app
+  from Finder or Spotlight restores it and opens the panel.
+- The icon's right-click menu now opens reliably even when the panel is already open.
+
 ## [2.10.0] - 2026-06-15
 
 ### Added
