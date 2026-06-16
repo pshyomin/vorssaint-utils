@@ -198,6 +198,7 @@ final class SystemMonitor: ObservableObject {
         let defaults = UserDefaults.standard
         let needNetwork = full || defaults.bool(forKey: DefaultsKey.menuBarNetwork)
         let needPower = full || defaults.bool(forKey: DefaultsKey.menuBarPower)
+            || defaults.bool(forKey: DefaultsKey.menuBarBattery)
         let needGPU = full || defaults.bool(forKey: DefaultsKey.menuBarGPU)
         queue.async { [weak self] in
             guard let self else { return }

@@ -6,7 +6,7 @@ import AppKit
 /// A live reading the user can pin next to the menu bar icon. Order here is the
 /// order shown in the menu bar.
 enum MenuBarMetric: CaseIterable {
-    case cpu, gpu, memory, network, power
+    case cpu, gpu, memory, network, battery, power
 
     var defaultsKey: String {
         switch self {
@@ -14,6 +14,7 @@ enum MenuBarMetric: CaseIterable {
         case .gpu: return DefaultsKey.menuBarGPU
         case .memory: return DefaultsKey.menuBarMemory
         case .network: return DefaultsKey.menuBarNetwork
+        case .battery: return DefaultsKey.menuBarBattery
         case .power: return DefaultsKey.menuBarPower
         }
     }
@@ -84,6 +85,12 @@ enum MenuBarRenderer {
                     separate()
                     segments.append(.text("↓" + rjust(MetricFormat.bytesPerSecCompact(down), 5)
                                          + " ↑" + rjust(MetricFormat.bytesPerSecCompact(up), 5)))
+                }
+            case .battery:
+                if let charge = snapshot.power?.chargePercent {
+                    separate()
+                    let prefix = (snapshot.power?.isCharging ?? false) ? "BAT+ " : "BAT  "
+                    segments.append(.text(prefix + percent(Double(charge) / 100.0)))
                 }
             case .power:
                 if let watts = snapshot.power?.systemWatts {

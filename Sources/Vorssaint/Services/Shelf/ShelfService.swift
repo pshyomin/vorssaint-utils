@@ -18,18 +18,44 @@ final class ShelfService: ObservableObject {
     static let shared = ShelfService()
 
     struct Item: Identifiable, Equatable {
-        let id = UUID()
-        enum Payload: Equatable {
+        let id: UUID
+        indirect enum Payload: Equatable {
             case file(URL)
             case text(String)
             case link(URL)
+            case batch([Item])
         }
         let payload: Payload
         let title: String
         let icon: NSImage
         let isImage: Bool
 
+        init(id: UUID = UUID(), payload: Payload, title: String, icon: NSImage, isImage: Bool) {
+            self.id = id
+            self.payload = payload
+            self.title = title
+            self.icon = icon
+            self.isImage = isImage
+        }
+
         static func == (lhs: Item, rhs: Item) -> Bool { lhs.id == rhs.id }
+
+        var isBatch: Bool {
+            if case .batch = payload { return true }
+            return false
+        }
+
+        var batchItems: [Item] {
+            if case let .batch(items) = payload { return items }
+            return []
+        }
+
+        var leafCount: Int {
+            switch payload {
+            case .file, .text, .link: return 1
+            case let .batch(items): return items.reduce(0) { $0 + $1.leafCount }
+            }
+        }
     }
 
     @Published private(set) var items: [Item] = [] {
@@ -38,6 +64,7 @@ final class ShelfService: ObservableObject {
     /// Ids of tiles the user has selected; a drag of any selected tile drags
     /// the whole selection out together.
     @Published private(set) var selection: Set<UUID> = []
+    @Published private(set) var expandedBatches: Set<UUID> = []
 
     private var panel: NSPanel?
     private var hotKeyRef: EventHotKeyRef?
@@ -57,6 +84,8 @@ final class ShelfService: ObservableObject {
     /// count after this point; Dock stacks can publish the drag contents first.
     private var dragPasteboardBaseline = DragPasteboardSnapshot.empty
     private var dragBeganInDock = false
+    private var activeInternalDragIDs: [UUID] = []
+    private var internalDragWasMerged = false
 
     private struct DragPasteboardSnapshot {
         let changeCount: Int
@@ -80,6 +109,23 @@ final class ShelfService: ObservableObject {
     }
 
     var isVisible: Bool { panel?.isVisible == true }
+    var itemCount: Int { items.reduce(0) { $0 + $1.leafCount } }
+    var visibleItems: [Item] { visibleItems(in: items) }
+
+    static let tileDropTypes: [NSPasteboard.PasteboardType] = [
+        .fileURL,
+        .URL,
+        .string,
+        .tiff,
+        .png,
+        NSPasteboard.PasteboardType("NSFilenamesPboardType"),
+        NSPasteboard.PasteboardType("NSURLPboardType"),
+        NSPasteboard.PasteboardType(UTType.fileURL.identifier),
+        NSPasteboard.PasteboardType(UTType.image.identifier),
+        NSPasteboard.PasteboardType(UTType.url.identifier),
+        NSPasteboard.PasteboardType(UTType.text.identifier),
+        NSPasteboard.PasteboardType(UTType.plainText.identifier),
+    ]
 
     // MARK: - Lifecycle
 
@@ -260,6 +306,14 @@ final class ShelfService: ObservableObject {
     /// drag carries both an image and its page URL — prefer the image, and
     /// only fall back to treating a URL as a link when nothing richer exists.
     func accept(providers: [NSItemProvider]) -> Bool {
+        let fileProviders = providers.enumerated().filter {
+            $0.element.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+        }
+        if fileProviders.count > 1, fileProviders.count == providers.count {
+            acceptFileBatch(providers: fileProviders)
+            return true
+        }
+
         var handled = false
         for provider in providers {
             if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
@@ -293,10 +347,37 @@ final class ShelfService: ObservableObject {
         return handled
     }
 
+    private func acceptFileBatch(providers: [(offset: Int, element: NSItemProvider)]) {
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var loaded: [(Int, URL)] = []
+
+        for (index, provider) in providers {
+            group.enter()
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                if let url, url.isFileURL {
+                    lock.lock()
+                    loaded.append((index, url))
+                    lock.unlock()
+                }
+                group.leave()
+            }
+        }
+
+        group.notify(queue: .main) { [weak self] in
+            let urls = loaded.sorted { $0.0 < $1.0 }.map(\.1)
+            guard urls.count > 1 else {
+                if let url = urls.first { self?.addFile(url) }
+                return
+            }
+            self?.addFileBatch(urls)
+        }
+    }
+
     func removeItem(_ id: UUID) {
-        let removed = items.filter { $0.id == id }
-        items.removeAll { $0.id == id }
-        selection.remove(id)
+        var removed: [Item] = []
+        removeItems(Set([id]), from: &items, removed: &removed)
+        cleanSelectionState()
         retireTemporaryPayloads(in: removed)
         noteInteraction()
     }
@@ -305,9 +386,9 @@ final class ShelfService: ObservableObject {
     /// tiles you dropped elsewhere leave the shelf.
     func removeItems(_ ids: [UUID]) {
         let set = Set(ids)
-        let removed = items.filter { set.contains($0.id) }
-        items.removeAll { set.contains($0.id) }
-        selection.subtract(set)
+        var removed: [Item] = []
+        removeItems(set, from: &items, removed: &removed)
+        cleanSelectionState()
         retireTemporaryPayloads(in: removed)
         noteInteraction()
     }
@@ -316,6 +397,7 @@ final class ShelfService: ObservableObject {
         let removed = items
         items = []
         selection = []
+        expandedBatches = []
         retireTemporaryPayloads(in: removed)
         noteInteraction()
     }
@@ -325,8 +407,66 @@ final class ShelfService: ObservableObject {
         noteInteraction()
     }
 
+    func toggleBatchExpansion(_ id: UUID) {
+        guard let batch = item(withID: id), batch.isBatch else { return }
+        if expandedBatches.contains(id) {
+            expandedBatches.remove(id)
+            selection.subtract(allIDs(in: batch.batchItems))
+        } else {
+            expandedBatches.insert(id)
+        }
+        noteInteraction()
+    }
+
     func selectedItems() -> [Item] {
-        items.filter { selection.contains($0.id) }
+        selectedItems(in: items)
+    }
+
+    func dragItems(for item: Item) -> [Item] {
+        dragItems(for: [item])
+    }
+
+    func dragItems(for items: [Item]) -> [Item] {
+        var result: [Item] = []
+        var seen = Set<UUID>()
+        for item in items {
+            appendDragLeaves(from: item, to: &result, seen: &seen)
+        }
+        return result
+    }
+
+    func beginInternalDrag(ids: [UUID]) {
+        activeInternalDragIDs = ids
+        internalDragWasMerged = false
+    }
+
+    func finishInternalDrag(dropAccepted: Bool) -> [UUID] {
+        defer {
+            activeInternalDragIDs = []
+            internalDragWasMerged = false
+        }
+        guard dropAccepted, !internalDragWasMerged else { return [] }
+        return activeInternalDragIDs
+    }
+
+    var isInternalDragActive: Bool {
+        !activeInternalDragIDs.isEmpty
+    }
+
+    func canMergePasteboard(_ pasteboard: NSPasteboard, into targetID: UUID) -> Bool {
+        if !activeInternalDragIDs.isEmpty {
+            return canMergeInternalDrag(into: targetID)
+        }
+        return pasteboardCanCreateItem(pasteboard)
+    }
+
+    func mergePasteboard(_ pasteboard: NSPasteboard, into targetID: UUID) -> Bool {
+        if !activeInternalDragIDs.isEmpty {
+            return mergeInternalDrag(into: targetID)
+        }
+        let additions = items(from: pasteboard)
+        guard !additions.isEmpty else { return false }
+        return merge(additions, into: targetID)
     }
 
     /// The pasteboard representation used when dragging an item out of the shelf.
@@ -335,36 +475,63 @@ final class ShelfService: ObservableObject {
         case let .file(url): return url as NSURL
         case let .text(text): return text as NSString
         case let .link(url): return url as NSURL
+        case let .batch(items):
+            guard let first = dragItems(for: items).first else { return item.title as NSString }
+            return pasteboardWriter(for: first)
         }
     }
 
     private func addFile(_ url: URL) {
-        let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "heic", "heif", "tiff", "bmp", "webp"]
-        let isImage = imageExtensions.contains(url.pathExtension.lowercased())
-        let icon = (isImage ? NSImage(contentsOf: url) : nil) ?? NSWorkspace.shared.icon(forFile: url.path)
-        append(Item(payload: .file(url), title: url.lastPathComponent, icon: icon, isImage: isImage))
+        append(fileItem(for: url))
+    }
+
+    private func addFileBatch(_ urls: [URL]) {
+        let children = urls.map { fileItem(for: $0) }
+        append(batchItem(children: children))
     }
 
     private func addImage(_ image: NSImage) {
+        guard let item = imageItem(for: image) else { return }
+        append(item)
+    }
+
+    private func addText(_ string: String) {
+        guard let item = textItem(for: string) else { return }
+        append(item)
+    }
+
+    private func addLink(_ url: URL) {
+        append(linkItem(for: url))
+    }
+
+    private func fileItem(for url: URL) -> Item {
+        let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "gif", "heic", "heif", "tiff", "bmp", "webp"]
+        let isImage = imageExtensions.contains(url.pathExtension.lowercased())
+        let icon = (isImage ? NSImage(contentsOf: url) : nil) ?? NSWorkspace.shared.icon(forFile: url.path)
+        return Item(payload: .file(url), title: url.lastPathComponent, icon: icon, isImage: isImage)
+    }
+
+    private func imageItem(for image: NSImage) -> Item? {
         let url = tempDir.appendingPathComponent("\(UUID().uuidString).png")
         if let tiff = image.tiffRepresentation,
            let rep = NSBitmapImageRep(data: tiff),
            let png = rep.representation(using: .png, properties: [:]) {
             try? png.write(to: url)
-            append(Item(payload: .file(url), title: L10n.shared.s.shelfItemImage, icon: image, isImage: true))
+            return Item(payload: .file(url), title: L10n.shared.s.shelfItemImage, icon: image, isImage: true)
         }
+        return nil
     }
 
-    private func addText(_ string: String) {
+    private func textItem(for string: String) -> Item? {
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
         let firstLine = trimmed.split(whereSeparator: \.isNewline).first.map(String.init) ?? trimmed
         let icon = symbol("doc.plaintext")
-        append(Item(payload: .text(string), title: String(firstLine.prefix(48)), icon: icon, isImage: false))
+        return Item(payload: .text(string), title: String(firstLine.prefix(48)), icon: icon, isImage: false)
     }
 
-    private func addLink(_ url: URL) {
-        append(Item(payload: .link(url), title: url.host ?? url.absoluteString, icon: symbol("link"), isImage: false))
+    private func linkItem(for url: URL) -> Item {
+        Item(payload: .link(url), title: url.host ?? url.absoluteString, icon: symbol("link"), isImage: false)
     }
 
     private func append(_ item: Item) {
@@ -372,12 +539,124 @@ final class ShelfService: ObservableObject {
         noteInteraction()
     }
 
-    private func retireTemporaryPayloads(in removed: [Item]) {
-        let urls = removed.compactMap { item -> URL? in
-            guard case let .file(url) = item.payload,
-                  isShelfTemporaryFile(url) else { return nil }
-            return url
+    private func batchItem(id: UUID = UUID(), children: [Item]) -> Item {
+        let total = children.reduce(0) { $0 + $1.leafCount }
+        let title = children.first.map { "\($0.title) +\(max(0, total - 1))" } ?? ""
+        let icon = children.first?.icon ?? symbol("doc.on.doc")
+        return Item(id: id, payload: .batch(children), title: title, icon: icon, isImage: false)
+    }
+
+    private func items(from pasteboard: NSPasteboard) -> [Item] {
+        let fileOptions: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: fileOptions) as? [NSURL],
+           !urls.isEmpty {
+            return unique(urls.map { $0 as URL }.filter(\.isFileURL)).map { fileItem(for: $0) }
         }
+        if let paths = pasteboard.propertyList(forType: NSPasteboard.PasteboardType("NSFilenamesPboardType")) as? [String],
+           !paths.isEmpty {
+            return unique(paths.map { URL(fileURLWithPath: $0) }).map { fileItem(for: $0) }
+        }
+        if let image = NSImage(pasteboard: pasteboard),
+           let item = imageItem(for: image) {
+            return [item]
+        }
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [NSURL],
+           let url = urls.map({ $0 as URL }).first(where: { !$0.isFileURL }) {
+            return [linkItem(for: url)]
+        }
+        if let string = pasteboard.string(forType: .string),
+           let item = textItem(for: string) {
+            return [item]
+        }
+        return []
+    }
+
+    private func pasteboardCanCreateItem(_ pasteboard: NSPasteboard) -> Bool {
+        let fileOptions: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: fileOptions) as? [NSURL],
+           urls.contains(where: { ($0 as URL).isFileURL }) {
+            return true
+        }
+        if let paths = pasteboard.propertyList(forType: NSPasteboard.PasteboardType("NSFilenamesPboardType")) as? [String],
+           paths.contains(where: { !$0.isEmpty }) {
+            return true
+        }
+        if NSImage(pasteboard: pasteboard) != nil {
+            return true
+        }
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: nil) as? [NSURL],
+           urls.contains(where: { !($0 as URL).isFileURL }) {
+            return true
+        }
+        if let string = pasteboard.string(forType: .string),
+           !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
+        return false
+    }
+
+    private func unique(_ urls: [URL]) -> [URL] {
+        var seen = Set<String>()
+        return urls.filter { seen.insert($0.standardizedFileURL.path).inserted }
+    }
+
+    private func canMergeInternalDrag(into targetID: UUID) -> Bool {
+        guard !activeInternalDragIDs.isEmpty,
+              !activeInternalDragIDs.contains(targetID),
+              let target = item(withID: targetID)
+        else { return false }
+        let active = Set(activeInternalDragIDs)
+        guard allIDs(in: target.batchItems).isDisjoint(with: active) else { return false }
+        return !items(withIDs: active, in: items).isEmpty
+    }
+
+    private func mergeInternalDrag(into targetID: UUID) -> Bool {
+        guard canMergeInternalDrag(into: targetID) else { return false }
+        let sourceIDs = Set(activeInternalDragIDs)
+        let additions = dragItems(for: items(withIDs: sourceIDs, in: items))
+        guard !additions.isEmpty else { return false }
+
+        var moved: [Item] = []
+        removeItems(sourceIDs, from: &items, removed: &moved)
+        guard merge(additions, into: targetID) else { return false }
+        internalDragWasMerged = true
+        return true
+    }
+
+    private func merge(_ additions: [Item], into targetID: UUID) -> Bool {
+        let leaves = dragItems(for: additions)
+        guard !leaves.isEmpty,
+              leaves.allSatisfy({ $0.id != targetID }),
+              merge(leaves, into: targetID, in: &items)
+        else { return false }
+        cleanSelectionState()
+        noteInteraction()
+        return true
+    }
+
+    private func merge(_ additions: [Item], into targetID: UUID, in items: inout [Item]) -> Bool {
+        for index in items.indices {
+            if items[index].id == targetID {
+                switch items[index].payload {
+                case let .batch(children):
+                    items[index] = batchItem(id: items[index].id, children: children + additions)
+                case .file, .text, .link:
+                    items[index] = batchItem(id: items[index].id, children: [items[index]] + additions)
+                }
+                return true
+            }
+
+            guard case var .batch(children) = items[index].payload else { continue }
+            if merge(additions, into: targetID, in: &children) {
+                items[index] = batchItem(id: items[index].id, children: children)
+                return true
+            }
+        }
+        return false
+    }
+
+    private func retireTemporaryPayloads(in removed: [Item]) {
+        let urls = removed.flatMap { temporaryPayloadURLs(in: $0) }
         guard !urls.isEmpty else { return }
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + .seconds(10 * 60)) {
             let fm = FileManager.default
@@ -385,6 +664,130 @@ final class ShelfService: ObservableObject {
                 try? fm.removeItem(at: url)
             }
         }
+    }
+
+    private func temporaryPayloadURLs(in item: Item) -> [URL] {
+        switch item.payload {
+        case let .file(url):
+            return isShelfTemporaryFile(url) ? [url] : []
+        case .text, .link:
+            return []
+        case let .batch(items):
+            return items.flatMap { temporaryPayloadURLs(in: $0) }
+        }
+    }
+
+    private func removeItems(_ ids: Set<UUID>, from items: inout [Item], removed: inout [Item]) {
+        var kept: [Item] = []
+        for item in items {
+            if ids.contains(item.id) {
+                removed.append(item)
+                continue
+            }
+
+            guard case var .batch(children) = item.payload else {
+                kept.append(item)
+                continue
+            }
+
+            removeItems(ids, from: &children, removed: &removed)
+            if children.isEmpty {
+                expandedBatches.remove(item.id)
+            } else if children.count == 1 {
+                expandedBatches.remove(item.id)
+                kept.append(children[0])
+            } else {
+                kept.append(batchItem(id: item.id, children: children))
+            }
+        }
+        items = kept
+    }
+
+    private func visibleItems(in items: [Item]) -> [Item] {
+        var result: [Item] = []
+        for item in items {
+            result.append(item)
+            if expandedBatches.contains(item.id), case let .batch(children) = item.payload {
+                result.append(contentsOf: visibleItems(in: children))
+            }
+        }
+        return result
+    }
+
+    private func selectedItems(in items: [Item]) -> [Item] {
+        var result: [Item] = []
+        for item in items {
+            if selection.contains(item.id) { result.append(item) }
+            if case let .batch(children) = item.payload {
+                result.append(contentsOf: selectedItems(in: children))
+            }
+        }
+        return result
+    }
+
+    private func appendDragLeaves(from item: Item, to result: inout [Item], seen: inout Set<UUID>) {
+        switch item.payload {
+        case .file, .text, .link:
+            guard seen.insert(item.id).inserted else { return }
+            result.append(item)
+        case let .batch(items):
+            for child in items {
+                appendDragLeaves(from: child, to: &result, seen: &seen)
+            }
+        }
+    }
+
+    private func item(withID id: UUID) -> Item? {
+        item(withID: id, in: items)
+    }
+
+    private func item(withID id: UUID, in items: [Item]) -> Item? {
+        for item in items {
+            if item.id == id { return item }
+            if case let .batch(children) = item.payload,
+               let found = self.item(withID: id, in: children) {
+                return found
+            }
+        }
+        return nil
+    }
+
+    private func items(withIDs ids: Set<UUID>, in items: [Item]) -> [Item] {
+        var result: [Item] = []
+        for item in items {
+            if ids.contains(item.id) { result.append(item) }
+            if case let .batch(children) = item.payload {
+                result.append(contentsOf: self.items(withIDs: ids, in: children))
+            }
+        }
+        return result
+    }
+
+    private func allIDs(in items: [Item]) -> Set<UUID> {
+        var ids = Set<UUID>()
+        for item in items {
+            ids.insert(item.id)
+            if case let .batch(children) = item.payload {
+                ids.formUnion(allIDs(in: children))
+            }
+        }
+        return ids
+    }
+
+    private func batchIDs(in items: [Item]) -> Set<UUID> {
+        var ids = Set<UUID>()
+        for item in items {
+            if case let .batch(children) = item.payload {
+                ids.insert(item.id)
+                ids.formUnion(batchIDs(in: children))
+            }
+        }
+        return ids
+    }
+
+    private func cleanSelectionState() {
+        selection.formIntersection(allIDs(in: items))
+        expandedBatches.formIntersection(batchIDs(in: items))
     }
 
     private func cleanTemporaryFiles() {
@@ -494,7 +897,7 @@ final class ShelfService: ObservableObject {
     }
 
     private var shouldHoldOpen: Bool {
-        pointerInsidePanel || dropTargeted || interactionDepth > 0
+        !items.isEmpty || pointerInsidePanel || dropTargeted || interactionDepth > 0
     }
 
     private func scheduleAutoHideIfIdle() {

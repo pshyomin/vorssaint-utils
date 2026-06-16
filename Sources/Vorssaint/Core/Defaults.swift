@@ -9,6 +9,7 @@ enum DefaultsKey {
     static let clamshellPreferred = "clamshellPreferred"  // apply closed-lid mode to every session
     static let onboardingStep = "onboardingStep"          // resume point if onboarding is interrupted
     static let featuresOnboardingVersion = "featuresOnboardingVersion" // last feature-tour version the user saw
+    static let lastUpdateIntroVersion = "lastUpdateIntroVersion"
     static let defaultDuration = "defaultDurationMinutes" // 0 = indefinite
     static let batteryLimit = "batteryLimitPercent"       // 0 = never
     static let hotkeyEnabled = "hotkeyEnabled"
@@ -31,6 +32,7 @@ enum DefaultsKey {
     static let menuBarGPU = "menuBarGPU"
     static let menuBarMemory = "menuBarMemory"
     static let menuBarNetwork = "menuBarNetwork"
+    static let menuBarBattery = "menuBarBattery"
     static let menuBarPower = "menuBarPower"
     static let menuBarMemoryStyle = "menuBarMemoryStyle"   // dot | percent | both
     static let monitorInterval = "monitorIntervalSeconds"  // sampling cadence: 1/2/5
@@ -40,6 +42,7 @@ enum DefaultsKey {
     static let monitorShowNetwork = "monitorShowNetwork"
     static let monitorShowPower = "monitorShowPower"
     static let monitorShowMixer = "monitorShowMixer"
+    static let monitorShowFanControlBeta = "monitorShowFanControlBeta"
     // System monitor — per-metric history graphs (each independently toggleable).
     static let monitorGraphCPU = "monitorGraphCPU"
     static let monitorGraphGPU = "monitorGraphGPU"
@@ -65,6 +68,7 @@ enum DefaultsKey {
     // collapsed, both comma-joined section ids (see PanelSectionID). Absent keys
     // mean the canonical order and nothing collapsed, so no defaults registration.
     static let panelSectionOrder = "panelSectionOrder"
+    static let panelNavigationEnabled = "panelNavigationEnabled"
     static let panelCollapsedSections = "panelCollapsedSections"
     static let panelCollapsedResetVersion = "panelCollapsedResetVersion"
 
@@ -72,12 +76,13 @@ enum DefaultsKey {
     static let simulateUpdate = "simulateUpdate"
 }
 
-/// Bump `currentFeatureSet` when the first-run tour changes. Existing users are
-/// marked as caught up silently on update; the app should not open update popups.
+/// Bump `currentFeatureSet` when a release needs an update intro.
 enum OnboardingInfo {
     // 2: system monitor, configurable panel and menu bar metrics.
     // 3: app languages and Buy Me a Coffee support in first-run onboarding.
-    static let currentFeatureSet = 3
+    // 4: navigable menu panel sections.
+    static let panelNavigationFeatureSet = 4
+    static let currentFeatureSet = 4
 }
 
 enum Defaults {
@@ -111,6 +116,8 @@ enum Defaults {
         DefaultsKey.monitorShowNetwork: true,
         DefaultsKey.monitorShowPower: true,
         DefaultsKey.monitorShowMixer: true,
+        DefaultsKey.monitorShowFanControlBeta: false,
+        DefaultsKey.panelNavigationEnabled: true,
         DefaultsKey.monitorGraphCPU: true,
         DefaultsKey.monitorGraphGPU: true,
         DefaultsKey.monitorGraphMemory: true,

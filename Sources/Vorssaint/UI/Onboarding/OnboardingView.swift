@@ -9,17 +9,30 @@ import SwiftUI
 /// status verification and the final summary.
 enum OnboardingMode {
     case full
+    case update(includePanelNavigation: Bool)
 
     var steps: [OnboardingStep] {
-        [.welcome, .accessibility, .screenRecording, .monitor, .menuBarSetup,
-         .panelSetup, .optionalFeatures, .cutPaste, .autoQuit, .uninstaller, .shelf,
-         .status, .donate, .done]
+        switch self {
+        case .full:
+            return [.welcome, .accessibility, .screenRecording, .monitor, .menuBarSetup,
+                    .panelSetup, .panelNavigation, .optionalFeatures, .cutPaste, .autoQuit, .uninstaller, .shelf,
+                    .status, .donate, .done]
+        case let .update(includePanelNavigation):
+            return (includePanelNavigation ? [.panelNavigation] : []) + [.donate, .done]
+        }
+    }
+
+    func title(_ strings: Strings) -> String {
+        switch self {
+        case .full: return strings.obStepWelcomeTitle
+        case .update: return strings.obWhatsNewTitle
+        }
     }
 }
 
 enum OnboardingStep {
     case welcome, accessibility, screenRecording, monitor, menuBarSetup, panelSetup, optionalFeatures
-    case cutPaste, autoQuit, uninstaller, shelf
+    case panelNavigation, cutPaste, autoQuit, uninstaller, shelf
     case status, donate, done
 }
 
@@ -46,7 +59,12 @@ struct OnboardingView: View {
         }
         .frame(width: 540, height: 600)
         .onAppear {
-            if !steps.indices.contains(index) { index = 0 }
+            switch mode {
+            case .full:
+                if !steps.indices.contains(index) { index = 0 }
+            case .update:
+                index = 0
+            }
         }
     }
 
@@ -67,6 +85,7 @@ struct OnboardingView: View {
         case .monitor: MonitorStep()
         case .menuBarSetup: MenuBarSetupStep()
         case .panelSetup: PanelSetupStep()
+        case .panelNavigation: PanelNavigationStep()
         case .optionalFeatures: OptionalFeaturesStep()
         case .cutPaste: CutPasteShowcaseStep()
         case .autoQuit: AutoQuitShowcaseStep()
@@ -286,6 +305,7 @@ private struct MenuBarSetupStep: View {
     @AppStorage(DefaultsKey.menuBarGPU) private var gpu = false
     @AppStorage(DefaultsKey.menuBarMemory) private var memory = false
     @AppStorage(DefaultsKey.menuBarNetwork) private var network = false
+    @AppStorage(DefaultsKey.menuBarBattery) private var battery = false
     @AppStorage(DefaultsKey.menuBarPower) private var power = false
 
     var body: some View {
@@ -305,6 +325,8 @@ private struct MenuBarSetupStep: View {
                 toggle(l10n.s.monitorShowMemory, $memory)
                 Divider()
                 toggle(l10n.s.monitorShowNetwork, $network)
+                Divider()
+                toggle(l10n.s.batteryLabel, $battery)
                 Divider()
                 toggle(l10n.s.monitorShowPowerLabel, $power)
             }
@@ -345,6 +367,7 @@ private struct MenuBarPreview: View {
     @AppStorage(DefaultsKey.menuBarGPU) private var gpu = false
     @AppStorage(DefaultsKey.menuBarMemory) private var memory = false
     @AppStorage(DefaultsKey.menuBarNetwork) private var network = false
+    @AppStorage(DefaultsKey.menuBarBattery) private var battery = false
     @AppStorage(DefaultsKey.menuBarPower) private var power = false
     @AppStorage(DefaultsKey.menuBarMemoryStyle) private var memoryStyle = "percent"
 
@@ -426,6 +449,58 @@ private struct PanelSetupStep: View {
             }
             .formStyle(.grouped)
             .frame(maxHeight: .infinity)
+        }
+    }
+}
+
+// MARK: - Panel navigation setup
+
+private struct PanelNavigationStep: View {
+    @ObservedObject private var l10n = L10n.shared
+    @AppStorage(DefaultsKey.panelNavigationEnabled) private var enabled = true
+
+    var body: some View {
+        VStack(spacing: 18) {
+            StepHeader(icon: "square.grid.2x2",
+                       title: l10n.s.obStepPanelNavigationTitle,
+                       subtitle: l10n.s.obStepPanelNavigationBody)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 10) {
+                    Image(systemName: "moon.zzz.fill")
+                    Image(systemName: "slider.horizontal.3")
+                    Image(systemName: "cpu")
+                    Image(systemName: "network")
+                    Image(systemName: "bolt.fill")
+                    Image(systemName: "wrench.and.screwdriver.fill")
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+
+                Divider()
+
+                Toggle(l10n.s.panelNavigationMode, isOn: $enabled)
+                    .toggleStyle(.switch)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+
+                Text(l10n.s.panelNavigationCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 22)
+                    .padding(.bottom, 14)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.primary.opacity(0.05))
+            )
+            .padding(.horizontal, 28)
+
+            Spacer()
         }
     }
 }

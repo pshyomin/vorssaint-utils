@@ -63,7 +63,7 @@ struct ShelfView: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 if !shelf.items.isEmpty {
-                    Text("\(shelf.items.count)")
+                    Text("\(shelf.itemCount)")
                         .font(.system(size: 11, weight: .bold))
                         .padding(.horizontal, 6).padding(.vertical, 1)
                         .background(Capsule().fill(Color.secondary.opacity(0.18)))
@@ -99,7 +99,9 @@ struct ShelfView: View {
         if shelf.items.isEmpty {
             emptyState
         } else {
-            ShelfTilesView(items: shelf.items, selection: shelf.selection)
+            ShelfTilesView(items: shelf.visibleItems,
+                           selection: shelf.selection,
+                           expandedBatches: shelf.expandedBatches)
                 .frame(height: Self.tileAreaHeight)
         }
     }

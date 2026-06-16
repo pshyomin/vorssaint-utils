@@ -14,6 +14,7 @@ enum BreakdownKind {
 struct SystemSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var monitor = SystemMonitor.shared
+    var collapsible = true
     @State private var expanded: BreakdownKind?
     @State private var breakdownRows: [ProcessUsage] = []
     @State private var lastBreakdownRefresh = Date.distantPast
@@ -34,7 +35,7 @@ struct SystemSection: View {
             if visibleBlocks.isEmpty {
                 EmptyView()
             } else {
-                PanelSection(.system, title: l10n.s.systemSection) {
+                PanelSection(.system, title: l10n.s.systemSection, collapsible: collapsible) {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(Array(visibleBlocks.enumerated()), id: \.element) { index, block in
                             if index > 0 { Divider() }

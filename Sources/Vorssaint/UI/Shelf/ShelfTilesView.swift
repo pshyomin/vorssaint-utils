@@ -27,6 +27,7 @@ struct WindowMoveHandle: NSViewRepresentable {
 struct ShelfTilesView: NSViewRepresentable {
     var items: [ShelfService.Item]
     var selection: Set<UUID>
+    var expandedBatches: Set<UUID>
 
     static let tileSize = NSSize(width: 78, height: 88)
     static let spacing: CGFloat = 10
@@ -61,7 +62,9 @@ struct ShelfTilesView: NSViewRepresentable {
         for (index, item) in items.enumerated() {
             let column = index % columns
             let row = index / columns
-            let view = ShelfTileView(item: item, isSelected: selection.contains(item.id))
+            let view = ShelfTileView(item: item,
+                                     isSelected: selection.contains(item.id),
+                                     isExpanded: expandedBatches.contains(item.id))
             view.frame = NSRect(x: inset + CGFloat(column) * columnStride,
                                 y: inset + CGFloat(row) * rowStride,
                                 width: tile.width,
@@ -87,22 +90,23 @@ struct ShelfTilesView: NSViewRepresentable {
 final class ShelfTileView: NSView, NSDraggingSource {
     private let item: ShelfService.Item
     private let isSelected: Bool
+    private let isExpanded: Bool
     private var mouseDownPoint: NSPoint = .zero
     private var didDrag = false
     private var draggedIDs: [UUID] = []
+    private var isDropTargeted = false
     private var closeButton: NSButton!
+    private var expandButton: NSButton?
 
-    init(item: ShelfService.Item, isSelected: Bool) {
+    init(item: ShelfService.Item, isSelected: Bool, isExpanded: Bool) {
         self.item = item
         self.isSelected = isSelected
+        self.isExpanded = isExpanded
         super.init(frame: NSRect(origin: .zero, size: ShelfTilesView.tileSize))
         wantsLayer = true
         layer?.cornerRadius = 10
-        if isSelected {
-            layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.16).cgColor
-            layer?.borderWidth = 2
-            layer?.borderColor = NSColor.controlAccentColor.cgColor
-        }
+        syncChrome()
+        registerForDraggedTypes(ShelfService.tileDropTypes)
         buildSubviews()
     }
 
@@ -110,7 +114,28 @@ final class ShelfTileView: NSView, NSDraggingSource {
 
     override var isFlipped: Bool { true }
 
+    private func syncChrome() {
+        layer?.backgroundColor = isSelected
+            ? NSColor.controlAccentColor.withAlphaComponent(0.16).cgColor
+            : nil
+        if isSelected || isDropTargeted {
+            layer?.borderWidth = 2
+            layer?.borderColor = NSColor.controlAccentColor.cgColor
+        } else {
+            layer?.borderWidth = 0
+            layer?.borderColor = nil
+        }
+    }
+
+    private func setDropTargeted(_ targeted: Bool) {
+        guard isDropTargeted != targeted else { return }
+        isDropTargeted = targeted
+        syncChrome()
+    }
+
     private func buildSubviews() {
+        if item.isBatch { addStackBackplates() }
+
         let iconWell = NSView(frame: NSRect(x: 7, y: 6, width: 64, height: 50))
         iconWell.wantsLayer = true
         iconWell.layer?.cornerRadius = 8
@@ -124,6 +149,30 @@ final class ShelfTileView: NSView, NSDraggingSource {
         imageView.autoresizingMask = [.width, .height]
         iconWell.addSubview(imageView)
 
+        if item.isBatch {
+            let badge = NSTextField(labelWithString: "\(item.leafCount)")
+            badge.frame = NSRect(x: 50, y: 39, width: 22, height: 15)
+            badge.font = .systemFont(ofSize: 9, weight: .bold)
+            badge.alignment = .center
+            badge.textColor = .white
+            badge.wantsLayer = true
+            badge.layer?.cornerRadius = 7.5
+            badge.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+            addSubview(badge)
+
+            let expand = NSButton(frame: NSRect(x: 4, y: 4, width: 17, height: 17))
+            expand.image = NSImage(systemSymbolName: isExpanded ? "chevron.down.circle.fill" : "chevron.right.circle.fill",
+                                   accessibilityDescription: nil)
+            expand.isBordered = false
+            expand.bezelStyle = .regularSquare
+            expand.imagePosition = .imageOnly
+            expand.contentTintColor = .secondaryLabelColor
+            expand.target = self
+            expand.action = #selector(toggleBatchExpansion)
+            expandButton = expand
+            addSubview(expand)
+        }
+
         let label = NSTextField(labelWithString: item.title)
         label.frame = NSRect(x: 3, y: 59, width: 72, height: 24)
         label.font = .systemFont(ofSize: 10)
@@ -134,7 +183,8 @@ final class ShelfTileView: NSView, NSDraggingSource {
         addSubview(label)
 
         if isSelected {
-            let badge = NSImageView(frame: NSRect(x: 4, y: 4, width: 16, height: 16))
+            let badgeY: CGFloat = item.isBatch ? 22 : 4
+            let badge = NSImageView(frame: NSRect(x: 4, y: badgeY, width: 16, height: 16))
             badge.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
             badge.contentTintColor = .controlAccentColor
             addSubview(badge)
@@ -150,6 +200,21 @@ final class ShelfTileView: NSView, NSDraggingSource {
         closeButton.action = #selector(removeSelf)
         closeButton.isHidden = true
         addSubview(closeButton)
+    }
+
+    private func addStackBackplates() {
+        for (index, offset) in [2, 1].enumerated() {
+            let view = NSView(frame: NSRect(x: 7 + CGFloat(offset) * 3,
+                                           y: 6 + CGFloat(offset) * 3,
+                                           width: 64,
+                                           height: 50))
+            view.wantsLayer = true
+            view.layer?.cornerRadius = 8
+            view.layer?.backgroundColor = NSColor.white.withAlphaComponent(index == 0 ? 0.035 : 0.055).cgColor
+            view.layer?.borderWidth = 1
+            view.layer?.borderColor = NSColor.white.withAlphaComponent(0.05).cgColor
+            addSubview(view)
+        }
     }
 
     override func updateTrackingAreas() {
@@ -181,16 +246,27 @@ final class ShelfTileView: NSView, NSDraggingSource {
     }
 
     override func mouseUp(with event: NSEvent) {
-        if !didDrag { ShelfService.shared.toggleSelection(item.id) }
+        guard !didDrag else { return }
+        if item.isBatch, event.clickCount >= 2 {
+            ShelfService.shared.toggleBatchExpansion(item.id)
+        } else {
+            ShelfService.shared.toggleSelection(item.id)
+        }
     }
 
     @objc private func removeSelf() {
         ShelfService.shared.removeItem(item.id)
     }
 
+    @objc private func toggleBatchExpansion() {
+        ShelfService.shared.toggleBatchExpansion(item.id)
+    }
+
     private func beginItemDrag(with event: NSEvent) {
         let shelf = ShelfService.shared
-        let dragged = shelf.selection.contains(item.id) ? shelf.selectedItems() : [item]
+        let candidates = shelf.selection.contains(item.id) ? shelf.selectedItems() : [item]
+        let dragged = shelf.dragItems(for: candidates)
+        guard !dragged.isEmpty else { return }
         draggedIDs = dragged.map(\.id)
 
         let draggingItems: [NSDraggingItem] = dragged.map { entry in
@@ -199,6 +275,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
             draggingItem.setDraggingFrame(bounds, contents: entry.icon)
             return draggingItem
         }
+        shelf.beginInternalDrag(ids: draggedIDs)
         shelf.beginInteraction()
         beginDraggingSession(with: draggingItems, event: event, source: self)
     }
@@ -207,16 +284,56 @@ final class ShelfTileView: NSView, NSDraggingSource {
 
     func draggingSession(_ session: NSDraggingSession,
                          sourceOperationMaskFor context: NSDraggingContext) -> NSDragOperation {
-        .copy
+        [.copy, .move]
     }
 
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         // A non-empty operation means the drop was accepted somewhere — pull the
         // dragged tiles out of the shelf. A cancelled drag leaves them.
-        let ids = draggedIDs
         DispatchQueue.main.async {
+            let ids = ShelfService.shared.finishInternalDrag(dropAccepted: operation != [])
             ShelfService.shared.endInteraction()
-            if operation != [] { ShelfService.shared.removeItems(ids) }
+            if !ids.isEmpty { ShelfService.shared.removeItems(ids) }
         }
+    }
+
+    // MARK: NSDraggingDestination
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        let operation = mergeOperation(for: sender)
+        setDropTargeted(operation != [])
+        if operation != [] { ShelfService.shared.noteInteraction() }
+        return operation
+    }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        let operation = mergeOperation(for: sender)
+        setDropTargeted(operation != [])
+        return operation
+    }
+
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        setDropTargeted(false)
+    }
+
+    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        ShelfService.shared.canMergePasteboard(sender.draggingPasteboard, into: item.id)
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let merged = ShelfService.shared.mergePasteboard(sender.draggingPasteboard, into: item.id)
+        setDropTargeted(false)
+        return merged
+    }
+
+    override func concludeDragOperation(_ sender: NSDraggingInfo?) {
+        setDropTargeted(false)
+    }
+
+    private func mergeOperation(for sender: NSDraggingInfo) -> NSDragOperation {
+        guard ShelfService.shared.canMergePasteboard(sender.draggingPasteboard, into: item.id) else {
+            return []
+        }
+        return ShelfService.shared.isInternalDragActive ? .move : .copy
     }
 }

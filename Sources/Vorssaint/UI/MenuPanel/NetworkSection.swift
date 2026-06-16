@@ -9,6 +9,7 @@ struct NetworkSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var monitor = SystemMonitor.shared
     @ObservedObject private var speed = SpeedTest.shared
+    var collapsible = true
     @AppStorage(DefaultsKey.monitorGraphNetwork) private var showGraph = true
     @AppStorage(DefaultsKey.monitorNetSpeed) private var netSpeed = true
     @AppStorage(DefaultsKey.monitorNetTotals) private var netTotals = true
@@ -19,7 +20,7 @@ struct NetworkSection: View {
             if visibleBlocks.isEmpty {
                 EmptyView()
             } else {
-                PanelSection(.network, title: l10n.s.networkSection) {
+                PanelSection(.network, title: l10n.s.networkSection, collapsible: collapsible) {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(Array(visibleBlocks.enumerated()), id: \.element) { index, block in
                             if index > 0 { Divider() }

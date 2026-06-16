@@ -7,7 +7,7 @@ import SwiftUI
 /// stable identifiers persisted in the saved order and the collapsed set, so
 /// renaming a case would orphan a user's stored layout — keep them stable.
 enum PanelSectionID: String, CaseIterable, Identifiable {
-    case keepAwake, mixer, system, network, power
+    case keepAwake, mixer, system, network, power, fanControl, utilities
 
     var id: String { rawValue }
 
@@ -19,6 +19,20 @@ enum PanelSectionID: String, CaseIterable, Identifiable {
         case .system: return s.systemSection
         case .network: return s.networkSection
         case .power: return s.powerSection
+        case .fanControl: return s.fanControlBetaSection
+        case .utilities: return s.utilitiesSection
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .keepAwake: return "moon.zzz.fill"
+        case .mixer: return "slider.horizontal.3"
+        case .system: return "cpu"
+        case .network: return "network"
+        case .power: return "bolt.fill"
+        case .fanControl: return "fanblades.fill"
+        case .utilities: return "wrench.and.screwdriver.fill"
         }
     }
 }
@@ -77,35 +91,48 @@ enum PanelLayout {
 struct PanelSection<Content: View>: View {
     private let id: PanelSectionID
     private let title: String
+    private let collapsible: Bool
     private let content: Content
     @State private var collapsed: Bool
 
-    init(_ id: PanelSectionID, title: String, @ViewBuilder content: () -> Content) {
+    init(_ id: PanelSectionID, title: String, collapsible: Bool = true,
+         @ViewBuilder content: () -> Content) {
         self.id = id
         self.title = title
+        self.collapsible = collapsible
         self.content = content()
         _collapsed = State(initialValue: PanelLayout.isCollapsed(id))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Button(action: toggle) {
-                HStack(spacing: 6) {
-                    sectionTitle(title)
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.tertiary)
-                        .rotationEffect(.degrees(collapsed ? 0 : 90))
+            if collapsible {
+                Button(action: toggle) {
+                    header
                 }
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+            } else {
+                header
             }
-            .buttonStyle(.plain)
 
-            if !collapsed {
+            if !collapsible || !collapsed {
                 content
             }
         }
+    }
+
+    private var header: some View {
+        HStack(spacing: 6) {
+            sectionTitle(title)
+            Spacer(minLength: 0)
+            if collapsible {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                    .rotationEffect(.degrees(collapsed ? 0 : 90))
+            }
+        }
+        .contentShape(Rectangle())
     }
 
     private func toggle() {

@@ -9,6 +9,7 @@ import SwiftUI
 struct PowerSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var monitor = SystemMonitor.shared
+    var collapsible = true
     @AppStorage(DefaultsKey.monitorGraphPower) private var showGraph = true
     @AppStorage(DefaultsKey.monitorPwrSystem) private var pwrSystem = true
     @AppStorage(DefaultsKey.monitorPwrAdapter) private var pwrAdapter = true
@@ -18,7 +19,7 @@ struct PowerSection: View {
     var body: some View {
         Group {
             if shouldShow {
-                PanelSection(.power, title: l10n.s.powerSection) {
+                PanelSection(.power, title: l10n.s.powerSection, collapsible: collapsible) {
                     VStack(alignment: .leading, spacing: 10) {
                         content
                     }

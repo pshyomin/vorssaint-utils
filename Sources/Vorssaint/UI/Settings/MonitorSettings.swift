@@ -15,10 +15,12 @@ struct MonitorSettings: View {
     @AppStorage(DefaultsKey.menuBarGPU) private var menuBarGPU = false
     @AppStorage(DefaultsKey.menuBarMemory) private var menuBarMemory = false
     @AppStorage(DefaultsKey.menuBarNetwork) private var menuBarNetwork = false
+    @AppStorage(DefaultsKey.menuBarBattery) private var menuBarBattery = false
     @AppStorage(DefaultsKey.menuBarPower) private var menuBarPower = false
     @AppStorage(DefaultsKey.menuBarMemoryStyle) private var memoryStyle = "percent"
     @AppStorage(DefaultsKey.monitorInterval) private var interval = 2
     @AppStorage(DefaultsKey.temperatureUnit) private var temperatureUnit = TemperatureUnit.celsius.rawValue
+    @AppStorage(DefaultsKey.monitorShowFanControlBeta) private var showFanControlBeta = false
 
     @AppStorage(DefaultsKey.monitorGraphCPU) private var graphCPU = true
     @AppStorage(DefaultsKey.monitorGraphGPU) private var graphGPU = true
@@ -42,6 +44,7 @@ struct MonitorSettings: View {
                     .pickerStyle(.segmented)
                 }
                 Toggle(l10n.s.monitorShowNetwork, isOn: $menuBarNetwork)
+                Toggle(l10n.s.batteryLabel, isOn: $menuBarBattery)
                 Toggle(l10n.s.monitorShowPowerLabel, isOn: $menuBarPower)
                 Text(l10n.s.monitorMenuBarCaption)
                     .font(.caption)
@@ -62,6 +65,12 @@ struct MonitorSettings: View {
             Section(l10n.s.monitorPanelSection) {
                 MonitorPanelConfig()
                 Text(l10n.s.monitorPanelConfigHint)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section(l10n.s.fanControlBetaSection) {
+                Toggle(l10n.s.fanControlBetaShow, isOn: $showFanControlBeta)
+                Text(l10n.s.fanControlBetaCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -99,12 +108,13 @@ struct MonitorSettings: View {
 /// it sits inside the grouped Form without its own scroll area.
 private struct PanelOrderEditor: View {
     @ObservedObject private var l10n = L10n.shared
+    @AppStorage(DefaultsKey.monitorShowFanControlBeta) private var showFanControlBeta = false
     @State private var order: [PanelSectionID] = PanelLayout.order
     @State private var dragging: PanelSectionID?
 
     var body: some View {
         VStack(spacing: 0) {
-            ForEach(order) { id in
+            ForEach(editableOrder) { id in
                 VStack(spacing: 0) {
                     HStack(spacing: 8) {
                         Image(systemName: "line.3.horizontal")
@@ -125,7 +135,7 @@ private struct PanelOrderEditor: View {
                                                              order: $order,
                                                              dragging: $dragging))
 
-                    if id != order.last {
+                    if id != editableOrder.last {
                         Divider()
                     }
                 }
@@ -133,6 +143,11 @@ private struct PanelOrderEditor: View {
         }
         .padding(.vertical, 2)
         .onAppear { order = PanelLayout.order }
+        .onChange(of: showFanControlBeta) { _, _ in order = PanelLayout.order }
+    }
+
+    private var editableOrder: [PanelSectionID] {
+        order.filter { $0 != .fanControl || showFanControlBeta }
     }
 }
 

@@ -11,10 +11,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     private var popoverClosedAt = Date.distantPast
     private var popoverDismissMonitor: Any?
     private var popoverLocalDismissMonitor: Any?
+    private var popoverIsClosing = false
+    private var popoverCloseCompletions: [() -> Void] = []
     private var isTerminating = false
     private var cancellables = Set<AnyCancellable>()
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private let popoverOpenDuration: TimeInterval = 0.18
+    private let popoverCloseDuration: TimeInterval = 0.14
+    private let popoverSlideOffset: CGFloat = 8
 
     // MARK: - Lifecycle
 
@@ -77,10 +82,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         let defaults = UserDefaults.standard
         if !defaults.bool(forKey: DefaultsKey.hasOnboarded) {
             showOnboarding(mode: .full)
-        } else if defaults.integer(forKey: DefaultsKey.featuresOnboardingVersion) < OnboardingInfo.currentFeatureSet {
-            // Updates should stay quiet. Mark the current feature tour as seen so
-            // older installs do not get legacy language/support update prompts.
-            defaults.set(OnboardingInfo.currentFeatureSet, forKey: DefaultsKey.featuresOnboardingVersion)
+        } else {
+            let needsFeatureIntro = defaults.integer(forKey: DefaultsKey.featuresOnboardingVersion) < OnboardingInfo.currentFeatureSet
+            let needsVersionIntro = defaults.string(forKey: DefaultsKey.lastUpdateIntroVersion) != AppInfo.version
+            if needsFeatureIntro || needsVersionIntro {
+                if defaults.integer(forKey: DefaultsKey.featuresOnboardingVersion) < OnboardingInfo.panelNavigationFeatureSet {
+                    defaults.set(true, forKey: DefaultsKey.panelNavigationEnabled)
+                }
+                showOnboarding(mode: .update(includePanelNavigation: needsFeatureIntro))
+            }
         }
     }
 
@@ -152,6 +162,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         // user works in our own Settings window and sees changes live. Click
         // monitors below dismiss it when it would block that same Settings window.
         popover.behavior = .applicationDefined
+        // We animate the underlying popover window ourselves so applicationDefined
+        // dismissal, right-click menus and live Settings previews stay predictable.
         popover.animates = false
         popover.delegate = self
         let host = NSHostingController(rootView: MenuPanelView())
@@ -163,7 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     private func togglePopover() {
         if popover.isShown {
-            popover.performClose(nil)
+            closePopover()
             return
         }
         // The click that just transient-dismissed the popover also lands here;
@@ -177,6 +189,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             // without this it blinks shut when another display is fullscreen.
             window.collectionBehavior.insert([.fullScreenAuxiliary, .canJoinAllSpaces])
             window.makeKey()
+            animatePopoverOpen(window)
         }
         NSApp.activate(ignoringOtherApps: true)
         // Only arm the dismiss monitor if the popover actually presented — otherwise
@@ -243,14 +256,81 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         UpdateService.shared.checkIfStale()
     }
 
-    func closePopover(after delay: TimeInterval = 0) {
+    func closePopover(animated: Bool = true, after delay: TimeInterval = 0,
+                      completion: (() -> Void)? = nil) {
         if delay <= 0 {
-            popover.performClose(nil)
-        } else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                self?.popover.performClose(nil)
-            }
+            closePopoverNow(animated: animated, completion: completion)
+            return
         }
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.closePopoverNow(animated: animated, completion: completion)
+        }
+    }
+
+    private func closePopoverNow(animated: Bool, completion: (() -> Void)?) {
+        guard popover.isShown else {
+            completion?()
+            return
+        }
+        if let completion { popoverCloseCompletions.append(completion) }
+        guard !popoverIsClosing else { return }
+        guard animated, let window = popover.contentViewController?.view.window else {
+            finishPopoverClose()
+            return
+        }
+
+        popoverIsClosing = true
+        let startFrame = window.frame
+        let endFrame = startFrame.offsetBy(dx: 0, dy: popoverSlideOffset)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = popoverCloseDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            window.animator().alphaValue = 0
+            window.animator().setFrame(endFrame, display: true)
+        } completionHandler: { [weak self, weak window] in
+            window?.alphaValue = 1
+            window?.setFrame(startFrame, display: false)
+            self?.finishPopoverClose()
+        }
+    }
+
+    private func animatePopoverOpen(_ window: NSWindow) {
+        popoverIsClosing = false
+        let finalFrame = window.frame
+        let startFrame = finalFrame.offsetBy(dx: 0, dy: popoverSlideOffset)
+        window.alphaValue = 0
+        window.setFrame(startFrame, display: false)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = popoverOpenDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            window.animator().alphaValue = 1
+            window.animator().setFrame(finalFrame, display: true)
+        } completionHandler: { [weak self, weak window] in
+            guard let self,
+                  self.popover.isShown,
+                  window === self.popover.contentViewController?.view.window else { return }
+            window?.alphaValue = 1
+            window?.setFrame(finalFrame, display: false)
+        }
+    }
+
+    private func finishPopoverClose() {
+        guard popover.isShown else {
+            popoverIsClosing = false
+            runPopoverCloseCompletions()
+            return
+        }
+        popoverIsClosing = false
+        popover.performClose(nil)
+        runPopoverCloseCompletions()
+    }
+
+    private func runPopoverCloseCompletions() {
+        let completions = popoverCloseCompletions
+        popoverCloseCompletions.removeAll()
+        completions.forEach { $0() }
     }
 
     // While the panel is on screen the monitor samples everything (temperatures,
@@ -264,6 +344,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         SystemMonitor.shared.panelDidDisappear()
         removePopoverDismissMonitor()
         popoverClosedAt = Date()
+        popoverIsClosing = false
+        runPopoverCloseCompletions()
     }
 
     // MARK: - Context menu (right click)
@@ -272,8 +354,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         // The panel uses applicationDefined dismissal, so a right-click while it's
         // open won't close it on its own — and the menu would try to open behind it.
         // Close it first so the context menu always appears.
-        if popover.isShown { popover.performClose(nil) }
+        if popover.isShown {
+            closePopover { [weak self] in self?.presentContextMenu() }
+            return
+        }
 
+        presentContextMenu()
+    }
+
+    private func presentContextMenu() {
         let manager = KeepAwakeManager.shared
         let strings = L10n.shared.s
         let menu = NSMenu()
@@ -519,7 +608,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             self?.onboardingWindow?.close()
         })
         let window = NSWindow(contentViewController: host)
-        window.title = L10n.shared.s.obStepWelcomeTitle
+        window.title = mode.title(L10n.shared.s)
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
@@ -552,5 +641,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     private func markOnboardingComplete() {
         UserDefaults.standard.set(true, forKey: DefaultsKey.hasOnboarded)
         UserDefaults.standard.set(OnboardingInfo.currentFeatureSet, forKey: DefaultsKey.featuresOnboardingVersion)
+        UserDefaults.standard.set(AppInfo.version, forKey: DefaultsKey.lastUpdateIntroVersion)
     }
 }

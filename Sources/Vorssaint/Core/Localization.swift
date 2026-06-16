@@ -401,6 +401,18 @@ struct Strings {
     let monitorInterval2: String
     let monitorInterval5: String
     let monitorPanelSection: String
+    let panelNavigationMode: String
+    let panelNavigationCaption: String
+    let panelFooterSections: String
+    let panelFooterList: String
+    let fanControlBetaShow: String
+    let fanControlBetaSection: String
+    let fanControlBetaTitle: String
+    let fanControlBetaStatus: String
+    let fanControlBetaCaption: String
+    let fanControlModeAutomatic: String
+    let fanControlModeManual: String
+    let betaBadge: String
 
     // MARK: Panel — network
     let networkSection: String
@@ -455,9 +467,13 @@ struct Strings {
     let monitorOrderHint: String
     let obStepPanelTitle: String
     let obStepPanelBody: String
+    let obStepPanelNavigationTitle: String
+    let obStepPanelNavigationBody: String
 
     // MARK: Cleaning mode
     let cleaningMenuItem: String
+    let utilitiesSection: String
+    let cleaningPanelCaption: String
     let cleaningOverlayTitle: String
     let cleaningOverlaySubtitle: String
     let cleaningOverlayUnlock: String
@@ -775,6 +791,18 @@ extension Strings {
         monitorInterval2: "2 segundos",
         monitorInterval5: "5 segundos",
         monitorPanelSection: "No painel",
+        panelNavigationMode: "Navegar por seções no painel",
+        panelNavigationCaption: "Mostra uma seção por vez e coloca a navegação na parte de baixo do painel.",
+        panelFooterSections: "Seções",
+        panelFooterList: "Lista",
+        fanControlBetaShow: "Mostrar Fan Control (Beta) no painel",
+        fanControlBetaSection: "Fan Control",
+        fanControlBetaTitle: "Fan Control",
+        fanControlBetaStatus: "Automático",
+        fanControlBetaCaption: "Beta. O controle manual fica desativado até validação por modelo de Mac.",
+        fanControlModeAutomatic: "Automático",
+        fanControlModeManual: "Manual",
+        betaBadge: "BETA",
 
         networkSection: "Rede",
         networkDownload: "Download",
@@ -824,8 +852,12 @@ extension Strings {
         monitorOrderHint: "Arraste para reordenar as seções do painel. Use o chevron de cada seção no painel para recolher.",
         obStepPanelTitle: "O que aparece no painel",
         obStepPanelBody: "Abra cada bloco e escolha exatamente o que mostrar quando você clica no ícone.",
+        obStepPanelNavigationTitle: "Painel por seções",
+        obStepPanelNavigationBody: "O painel agora pode mostrar uma seção por vez, com a navegação na parte de baixo. A opção vem ligada nesta atualização para você testar.",
 
         cleaningMenuItem: "Modo de limpeza",
+        utilitiesSection: "Utilidades",
+        cleaningPanelCaption: "Bloqueia o teclado para limpar com segurança.",
         cleaningOverlayTitle: "Teclado bloqueado para limpeza",
         cleaningOverlaySubtitle: "Pressione a mesma tecla 5 vezes para desbloquear",
         cleaningOverlayUnlock: "Desbloquear",
@@ -1143,6 +1175,18 @@ extension Strings {
         monitorInterval2: "2 seconds",
         monitorInterval5: "5 seconds",
         monitorPanelSection: "In the panel",
+        panelNavigationMode: "Navigate panel by sections",
+        panelNavigationCaption: "Shows one section at a time and places navigation at the bottom of the panel.",
+        panelFooterSections: "Sections",
+        panelFooterList: "List",
+        fanControlBetaShow: "Show Fan Control (Beta) in the panel",
+        fanControlBetaSection: "Fan Control",
+        fanControlBetaTitle: "Fan Control",
+        fanControlBetaStatus: "Automatic",
+        fanControlBetaCaption: "Beta. Manual control stays disabled until each Mac model is validated.",
+        fanControlModeAutomatic: "Automatic",
+        fanControlModeManual: "Manual",
+        betaBadge: "BETA",
 
         networkSection: "Network",
         networkDownload: "Download",
@@ -1192,8 +1236,12 @@ extension Strings {
         monitorOrderHint: "Drag to reorder the panel sections. Use each section's chevron in the panel to collapse it.",
         obStepPanelTitle: "What's in the panel",
         obStepPanelBody: "Open each block and pick exactly what shows when you click the icon.",
+        obStepPanelNavigationTitle: "Section-based panel",
+        obStepPanelNavigationBody: "The panel can now show one section at a time, with navigation at the bottom. It is on for this update so you can try it.",
 
         cleaningMenuItem: "Cleaning Mode",
+        utilitiesSection: "Utilities",
+        cleaningPanelCaption: "Locks the keyboard so you can clean safely.",
         cleaningOverlayTitle: "Keyboard locked for cleaning",
         cleaningOverlaySubtitle: "Press the same key 5 times to unlock",
         cleaningOverlayUnlock: "Unlock",

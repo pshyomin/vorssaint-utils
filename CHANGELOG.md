@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.16.0] - 2026-06-16
+
+### Added
+- The menu panel now has an optional section navigation mode, with section icons
+  placed below the app header and a centered List/Sections switch in the footer.
+- The section navigation mode is introduced during the update flow and is enabled
+  by default so existing users can try it right away.
+- Shelf drops can now be kept as batches, and loose items can be added into an
+  existing stack by dropping them onto it.
+- Battery can now be shown as an optional menu bar metric.
+- A Fan Control beta entry can be enabled in Monitor settings. Manual control
+  remains disabled until Mac models are validated.
+
+### Changed
+- Cleaning Mode now lives in a dedicated Utilities section inside the panel.
+- The menu panel now fades and slides when opening or closing.
+- The section navigation panel now grows only as much as the active section needs,
+  instead of reserving a large empty area for shorter sections.
+
+### Fixed
+- The Shelf stays visible while it contains files, instead of auto-hiding while
+  the user is still collecting items.
+- The app switcher now handles apps on other Spaces more reliably when focusing a
+  selected window.
+
 ## [2.15.2] - 2026-06-16
 
 ### Fixed

@@ -10,9 +10,10 @@ import SwiftUI
 struct MixerSection: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var mixer = AppVolumeMixer.shared
+    var collapsible = true
 
     var body: some View {
-        PanelSection(.mixer, title: l10n.s.mixerSection) {
+        PanelSection(.mixer, title: l10n.s.mixerSection, collapsible: collapsible) {
             VStack(alignment: .leading, spacing: 8) {
                 if !AppVolumeMixer.isSupported {
                     emptyLabel(l10n.s.mixerUnavailable)

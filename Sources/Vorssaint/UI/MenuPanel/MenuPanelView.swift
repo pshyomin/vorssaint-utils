@@ -14,8 +14,12 @@ struct MenuPanelView: View {
     @AppStorage(DefaultsKey.monitorShowSystem) private var showSystem = true
     @AppStorage(DefaultsKey.monitorShowNetwork) private var showNetwork = true
     @AppStorage(DefaultsKey.monitorShowPower) private var showPower = true
+    @AppStorage(DefaultsKey.monitorShowFanControlBeta) private var showFanControlBeta = false
+    @AppStorage(DefaultsKey.panelNavigationEnabled) private var panelNavigationEnabled = true
     @AppStorage(DefaultsKey.panelSectionOrder) private var sectionOrderRaw = ""
     @State private var contentHeight: CGFloat = 0
+    @State private var navigableContentHeight: CGFloat = 0
+    @State private var selectedSection: PanelSectionID = .keepAwake
 
     /// Cap the panel to the usable screen height so it never overflows the menu
     /// bar; taller content scrolls inside.
@@ -24,6 +28,19 @@ struct MenuPanelView: View {
     }
 
     var body: some View {
+        Group {
+            if panelNavigationEnabled {
+                navigablePanel
+            } else {
+                classicPanel
+            }
+        }
+        .onAppear {
+            awake.refreshPasswordlessStatus()
+        }
+    }
+
+    private var classicPanel: some View {
         // Hosted in a custom overlay-scroller container. SwiftUI's own ScrollView
         // reserves a legacy scroller gutter on the right when the system is set to
         // always show scroll bars, pushing the fixed-width content off-center. An
@@ -44,9 +61,26 @@ struct MenuPanelView: View {
             .frame(width: 332)
         }
         .frame(width: 332, height: min(contentHeight == 0 ? 480 : contentHeight, maxHeight))
-        .onAppear {
-            awake.refreshPasswordlessStatus()
+    }
+
+    private var navigablePanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            UpdateBanner()
+            header
+            sectionNavigation
+
+            OverlayScrollView(measuredHeight: $navigableContentHeight) {
+                VStack(alignment: .leading, spacing: 12) {
+                    section(for: activeSection, collapsible: false)
+                }
+                .frame(width: 308)
+            }
+            .frame(width: 308, height: navigableScrollHeight)
+
+            footer
         }
+        .padding(12)
+        .frame(width: 332, height: navigablePanelHeight)
     }
 
     /// The major sections in the user's saved order. Reading `sectionOrderRaw`
@@ -58,18 +92,82 @@ struct MenuPanelView: View {
         return PanelLayout.order
     }
 
+    private var visibleSections: [PanelSectionID] {
+        orderedSections.filter(isSectionVisible)
+    }
+
+    private var activeSection: PanelSectionID {
+        visibleSections.contains(selectedSection) ? selectedSection : (visibleSections.first ?? .keepAwake)
+    }
+
+    private var navigableScrollHeight: CGFloat {
+        min(navigableContentHeight == 0 ? 120 : navigableContentHeight, maxHeight - navigableChromeHeight)
+    }
+
+    private var navigablePanelHeight: CGFloat {
+        min(maxHeight, max(220, navigableScrollHeight + navigableChromeHeight))
+    }
+
+    private var navigableChromeHeight: CGFloat {
+        166
+    }
+
     /// Renders the section for an id, honoring its "show in panel" toggle. Each
     /// section self-hides when it has nothing to show, so the order is stable
     /// whether or not a section is currently populated.
     @ViewBuilder
-    private func section(for id: PanelSectionID) -> some View {
+    private func section(for id: PanelSectionID, collapsible: Bool = true) -> some View {
         switch id {
-        case .keepAwake: KeepAwakeCard()
-        case .mixer: if showMixer { MixerSection() }
-        case .system: if showSystem { SystemSection() }
-        case .network: if showNetwork { NetworkSection() }
-        case .power: if showPower { PowerSection() }
+        case .keepAwake: KeepAwakeCard(collapsible: collapsible)
+        case .mixer: if showMixer { MixerSection(collapsible: collapsible) }
+        case .system: if showSystem { SystemSection(collapsible: collapsible) }
+        case .network: if showNetwork { NetworkSection(collapsible: collapsible) }
+        case .power: if showPower { PowerSection(collapsible: collapsible) }
+        case .fanControl: if showFanControlBeta { FanControlSection(collapsible: collapsible) }
+        case .utilities: UtilitiesSection(collapsible: collapsible, startCleaning: startCleaning)
         }
+    }
+
+    private func isSectionVisible(_ id: PanelSectionID) -> Bool {
+        switch id {
+        case .keepAwake: return true
+        case .mixer: return showMixer
+        case .system: return showSystem
+        case .network: return showNetwork
+        case .power: return showPower
+        case .fanControl: return showFanControlBeta
+        case .utilities: return true
+        }
+    }
+
+    private var sectionNavigation: some View {
+        HStack(spacing: 2) {
+            ForEach(visibleSections) { id in
+                Button {
+                    withAnimation(.easeInOut(duration: 0.16)) {
+                        selectedSection = id
+                    }
+                } label: {
+                    Image(systemName: id.symbolName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 28)
+                        .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(activeSection == id ? Color.accentColor : Color.secondary)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(activeSection == id ? Color.accentColor.opacity(0.18) : Color.clear)
+                )
+                .help(id.title(l10n.s))
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.primary.opacity(0.055))
+        )
     }
 
     /// Starts cleaning mode and closes the panel so the lock overlay is the only
@@ -105,20 +203,38 @@ struct MenuPanelView: View {
     }
 
     private var footer: some View {
-        HStack {
-            footerButton(l10n.s.panelSettings, systemImage: "gearshape") {
-                appDelegate()?.openSettingsWindow()
+        ZStack {
+            HStack {
+                footerButton(l10n.s.panelSettings, systemImage: "gearshape") {
+                    appDelegate()?.openSettingsWindow()
+                }
+                .frame(maxWidth: 116, alignment: .leading)
+
+                Spacer(minLength: 72)
+
+                footerButton(l10n.s.panelQuit, systemImage: "power") {
+                    NSApp.terminate(nil)
+                }
+                .frame(maxWidth: 92, alignment: .trailing)
             }
-            Spacer()
-            footerButton(l10n.s.cleaningMenuItem, systemImage: "keyboard") {
-                startCleaning()
-            }
-            Spacer()
-            footerButton(l10n.s.panelQuit, systemImage: "power") {
-                NSApp.terminate(nil)
+
+            footerButton(panelModeTitle, systemImage: panelModeSymbol) {
+                withAnimation(.easeInOut(duration: 0.16)) {
+                    panelNavigationEnabled.toggle()
+                }
             }
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: 22)
         .padding(.top, 2)
+    }
+
+    private var panelModeTitle: String {
+        panelNavigationEnabled ? l10n.s.panelFooterList : l10n.s.panelFooterSections
+    }
+
+    private var panelModeSymbol: String {
+        panelNavigationEnabled ? "list.bullet" : "square.grid.2x2"
     }
 
     private func footerButton(_ title: String, systemImage: String,
@@ -126,9 +242,42 @@ struct MenuPanelView: View {
         Button(action: action) {
             Label(title, systemImage: systemImage)
                 .font(.system(size: 11))
+                .lineLimit(1)
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
+    }
+}
+
+struct UtilitiesSection: View {
+    @ObservedObject private var l10n = L10n.shared
+    var collapsible = true
+    var startCleaning: () -> Void
+
+    var body: some View {
+        PanelSection(.utilities, title: l10n.s.utilitiesSection, collapsible: collapsible) {
+            Button(action: startCleaning) {
+                HStack(spacing: 9) {
+                    Image(systemName: "keyboard")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .frame(width: 22)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(l10n.s.cleaningMenuItem)
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(l10n.s.cleaningPanelCaption)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .panelCard()
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 
@@ -297,11 +446,12 @@ struct KeepAwakeCard: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var awake = KeepAwakeManager.shared
     @AppStorage(DefaultsKey.defaultDuration) private var defaultDuration: Int = 0
+    var collapsible = true
 
     var body: some View {
         // The collapsible header supplies the "Keep awake" title, so the card's
         // first row is just the live status and the on/off switch.
-        PanelSection(.keepAwake, title: l10n.s.keepAwakeTitle) {
+        PanelSection(.keepAwake, title: l10n.s.keepAwakeTitle, collapsible: collapsible) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     statusLine
