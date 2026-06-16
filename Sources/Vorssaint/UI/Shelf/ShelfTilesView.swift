@@ -11,6 +11,8 @@ struct WindowMoveHandle: NSViewRepresentable {
     private final class MoveView: NSView {
         override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
         override func mouseDown(with event: NSEvent) {
+            ShelfService.shared.beginInteraction()
+            defer { ShelfService.shared.endInteraction() }
             window?.performDrag(with: event)
         }
     }
@@ -23,16 +25,18 @@ struct ShelfTilesView: NSViewRepresentable {
     var items: [ShelfService.Item]
     var selection: Set<UUID>
 
-    static let tileSize = NSSize(width: 76, height: 86)
-    static let spacing: CGFloat = 8
+    static let tileSize = NSSize(width: 78, height: 88)
+    static let spacing: CGFloat = 10
+    static let inset: CGFloat = 4
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = NSScrollView()
         scroll.drawsBackground = false
         scroll.hasHorizontalScroller = false
         scroll.hasVerticalScroller = false
-        scroll.horizontalScrollElasticity = .allowed
-        scroll.verticalScrollElasticity = .none
+        scroll.scrollerStyle = .overlay
+        scroll.horizontalScrollElasticity = .none
+        scroll.verticalScrollElasticity = .allowed
         scroll.contentView.drawsBackground = false
         let document = FlippedView()
         scroll.documentView = document
@@ -44,14 +48,29 @@ struct ShelfTilesView: NSViewRepresentable {
         document.subviews.forEach { $0.removeFromSuperview() }
 
         let tile = Self.tileSize
+        let inset = Self.inset
+        let contentWidth = max(scroll.contentSize.width, 276)
+        let columnStride = tile.width + Self.spacing
+        let rowStride = tile.height + Self.spacing
+        let columns = max(1, Int((contentWidth - inset * 2 + Self.spacing) / columnStride))
+        let rows = max(1, Int(ceil(Double(items.count) / Double(columns))))
+
         for (index, item) in items.enumerated() {
+            let column = index % columns
+            let row = index / columns
             let view = ShelfTileView(item: item, isSelected: selection.contains(item.id))
-            view.frame = NSRect(x: CGFloat(index) * (tile.width + Self.spacing) + 2,
-                                y: 2, width: tile.width, height: tile.height)
+            view.frame = NSRect(x: inset + CGFloat(column) * columnStride,
+                                y: inset + CGFloat(row) * rowStride,
+                                width: tile.width,
+                                height: tile.height)
             document.addSubview(view)
         }
-        let width = max(CGFloat(items.count) * (tile.width + Self.spacing) + 4, scroll.contentSize.width)
-        document.frame = NSRect(x: 0, y: 0, width: width, height: tile.height + 4)
+        let contentHeight = inset * 2 + CGFloat(rows) * tile.height + CGFloat(max(0, rows - 1)) * Self.spacing
+        scroll.hasVerticalScroller = contentHeight > scroll.contentSize.height + 1
+        document.frame = NSRect(x: 0,
+                                y: 0,
+                                width: contentWidth,
+                                height: max(contentHeight, scroll.contentSize.height))
     }
 
     private final class FlippedView: NSView {
@@ -75,7 +94,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
         self.isSelected = isSelected
         super.init(frame: NSRect(origin: .zero, size: ShelfTilesView.tileSize))
         wantsLayer = true
-        layer?.cornerRadius = 11
+        layer?.cornerRadius = 10
         if isSelected {
             layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.16).cgColor
             layer?.borderWidth = 2
@@ -89,7 +108,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
     override var isFlipped: Bool { true }
 
     private func buildSubviews() {
-        let iconWell = NSView(frame: NSRect(x: 6, y: 5, width: 64, height: 50))
+        let iconWell = NSView(frame: NSRect(x: 7, y: 6, width: 64, height: 50))
         iconWell.wantsLayer = true
         iconWell.layer?.cornerRadius = 8
         iconWell.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.06).cgColor
@@ -103,7 +122,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
         iconWell.addSubview(imageView)
 
         let label = NSTextField(labelWithString: item.title)
-        label.frame = NSRect(x: 2, y: 58, width: 72, height: 24)
+        label.frame = NSRect(x: 3, y: 59, width: 72, height: 24)
         label.font = .systemFont(ofSize: 10)
         label.alignment = .center
         label.lineBreakMode = .byTruncatingMiddle
@@ -118,7 +137,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
             addSubview(badge)
         }
 
-        closeButton = NSButton(frame: NSRect(x: 56, y: 3, width: 17, height: 17))
+        closeButton = NSButton(frame: NSRect(x: 58, y: 4, width: 17, height: 17))
         closeButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: nil)
         closeButton.isBordered = false
         closeButton.bezelStyle = .regularSquare
@@ -144,6 +163,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func mouseDown(with event: NSEvent) {
+        ShelfService.shared.noteInteraction()
         mouseDownPoint = event.locationInWindow
         didDrag = false
     }
@@ -176,6 +196,7 @@ final class ShelfTileView: NSView, NSDraggingSource {
             draggingItem.setDraggingFrame(bounds, contents: entry.icon)
             return draggingItem
         }
+        shelf.beginInteraction()
         beginDraggingSession(with: draggingItems, event: event, source: self)
     }
 
@@ -189,8 +210,10 @@ final class ShelfTileView: NSView, NSDraggingSource {
     func draggingSession(_ session: NSDraggingSession, endedAt screenPoint: NSPoint, operation: NSDragOperation) {
         // A non-empty operation means the drop was accepted somewhere — pull the
         // dragged tiles out of the shelf. A cancelled drag leaves them.
-        guard operation != [] else { return }
         let ids = draggedIDs
-        DispatchQueue.main.async { ShelfService.shared.removeItems(ids) }
+        DispatchQueue.main.async {
+            ShelfService.shared.endInteraction()
+            if operation != [] { ShelfService.shared.removeItems(ids) }
+        }
     }
 }

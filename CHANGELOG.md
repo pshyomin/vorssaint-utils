@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.15.0] - 2026-06-16
+
+### Added
+- **Shelf now gets out of the way.** After it appears, it fades away on its own
+  after a few seconds if you are not interacting with it.
+- **Shelf feels more balanced.** The panel is more square, with a comfortable
+  three-column grid instead of a tight horizontal strip.
+
+### Changed
+- The menu bar icon now stays full strength while idle, turns amber while Keep
+  Awake is active, and still turns blue when an update is available.
+
+### Fixed
+- Shaking a file dragged from a Dock stack now opens the Shelf, matching the
+  behavior of files dragged from Finder.
+
 ## [2.14.0] - 2026-06-15
 
 ### Added

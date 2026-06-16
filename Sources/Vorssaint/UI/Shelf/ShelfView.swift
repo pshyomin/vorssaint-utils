@@ -10,9 +10,11 @@ struct ShelfView: View {
     @State private var targeted = false
 
     private static let dropTypes: [UTType] = [.fileURL, .image, .url, .text, .plainText]
+    private static let panelWidth: CGFloat = 304
+    private static let tileAreaHeight: CGFloat = 188
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 11) {
             header
             tiles
             if !shelf.items.isEmpty {
@@ -21,8 +23,8 @@ struct ShelfView: View {
                     .foregroundStyle(.tertiary)
             }
         }
-        .padding(12)
-        .frame(width: 360)
+        .padding(14)
+        .frame(width: Self.panelWidth)
         .background(HUDBackdrop(cornerRadius: 18))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
@@ -32,8 +34,16 @@ struct ShelfView: View {
         )
         .animation(.easeOut(duration: 0.15), value: targeted)
         .animation(.easeOut(duration: 0.18), value: shelf.items)
+        .onHover { inside in
+            shelf.setPointerInsidePanel(inside)
+        }
+        .onChange(of: targeted) { _, isTargeted in
+            shelf.setDropTargeted(isTargeted)
+        }
         .onDrop(of: Self.dropTypes, isTargeted: $targeted) { providers in
-            shelf.accept(providers: providers)
+            let accepted = shelf.accept(providers: providers)
+            if accepted { shelf.noteInteraction() }
+            return accepted
         }
     }
 
@@ -47,6 +57,8 @@ struct ShelfView: View {
                     .foregroundStyle(.secondary)
                 Text(title)
                     .font(.system(size: 12, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                 if !shelf.items.isEmpty {
                     Text("\(shelf.items.count)")
                         .font(.system(size: 11, weight: .bold))
@@ -85,7 +97,7 @@ struct ShelfView: View {
             emptyState
         } else {
             ShelfTilesView(items: shelf.items, selection: shelf.selection)
-                .frame(height: 92)
+                .frame(height: Self.tileAreaHeight)
         }
     }
 
@@ -93,11 +105,17 @@ struct ShelfView: View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
             .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
             .foregroundStyle(.secondary.opacity(0.4))
-            .frame(height: 92)
+            .frame(height: Self.tileAreaHeight)
             .overlay(
-                VStack(spacing: 6) {
-                    Image(systemName: "arrow.down.to.line").font(.system(size: 18)).foregroundStyle(.secondary)
-                    Text(l10n.s.shelfEmpty).font(.system(size: 12)).foregroundStyle(.secondary)
+                VStack(spacing: 8) {
+                    Image(systemName: "arrow.down.to.line")
+                        .font(.system(size: 21))
+                        .foregroundStyle(.secondary)
+                    Text(l10n.s.shelfEmpty)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
                 }
             )
     }

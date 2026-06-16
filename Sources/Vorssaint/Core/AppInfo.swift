@@ -21,4 +21,12 @@ enum AppInfo {
     static var isDeveloperBuild: Bool {
         (Bundle.main.bundleIdentifier ?? "").hasSuffix(".dev")
     }
+
+    /// The git commit a Developer build was compiled from, e.g. "ed2ebba · 2026-06-15 21:30"
+    /// (or with a "-dirty" suffix on the SHA for uncommitted changes). build.sh stamps
+    /// this into the Developer bundle only, so you can confirm at a glance that the
+    /// running dev app matches the source you are about to change. nil in the official app.
+    static var buildCommit: String? {
+        Bundle.main.object(forInfoDictionaryKey: "VorssaintBuildCommit") as? String
+    }
 }

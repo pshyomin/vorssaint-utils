@@ -42,11 +42,25 @@ final class ShelfService: ObservableObject {
     private var mouseMonitor: Any?
     private var shakeSamples: [(t: TimeInterval, x: CGFloat)] = []
     private var lastSummon: TimeInterval = 0
-    /// Drag-pasteboard change count captured at mouse-down. A shake only counts
-    /// when this has since changed — i.e. an actual file/image/text drag is in
-    /// progress. Moving a window writes nothing to the drag pasteboard, so it
-    /// leaves this untouched and never summons the shelf.
-    private var dragPasteboardBaseline = 0
+    private let autoHideDelay: TimeInterval = 5
+    private let autoHideFadeDuration: TimeInterval = 0.22
+    private var autoHideTimer: Timer?
+    private var autoHideFadeTimer: Timer?
+    private var autoHideFadeStart: Date?
+    private var pointerInsidePanel = false
+    private var dropTargeted = false
+    private var interactionDepth = 0
+    /// Drag-pasteboard state captured at mouse-down. Finder bumps the change
+    /// count after this point; Dock stacks can publish the drag contents first.
+    private var dragPasteboardBaseline = DragPasteboardSnapshot.empty
+    private var dragBeganInDock = false
+
+    private struct DragPasteboardSnapshot {
+        let changeCount: Int
+        let hasDroppableContent: Bool
+
+        static let empty = DragPasteboardSnapshot(changeCount: 0, hasDroppableContent: false)
+    }
 
     private let tempDir: URL = {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("VorssaintShelf", isDirectory: true)
@@ -115,15 +129,18 @@ final class ShelfService: ObservableObject {
 
     private func startShakeMonitor() {
         guard mouseMonitor == nil else { return }
-        dragPasteboardBaseline = NSPasteboard(name: .drag).changeCount
+        dragPasteboardBaseline = dragPasteboardSnapshot()
+        dragBeganInDock = false
         mouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .leftMouseDragged]) { [weak self] event in
             guard let self else { return }
             if event.type == .leftMouseDown {
-                // Capture the drag pasteboard before any drag starts; a content
-                // drag will bump it, a window move won't.
-                self.dragPasteboardBaseline = NSPasteboard(name: .drag).changeCount
+                // Capture the drag pasteboard before any drag starts. Finder
+                // changes it after this; Dock stacks may already have filled it.
+                self.dragPasteboardBaseline = self.dragPasteboardSnapshot()
+                self.dragBeganInDock = self.eventBelongsToDock(event)
                 self.shakeSamples.removeAll()
             } else {
+                self.dragBeganInDock = self.dragBeganInDock || self.eventBelongsToDock(event)
                 self.handleDrag(event)
             }
         }
@@ -158,11 +175,74 @@ final class ShelfService: ObservableObject {
         if reversals >= 3, travel > 220, t - lastSummon > 1.0 {
             // Only when content is actually being dragged — not when a window is
             // being moved (nothing droppable, so the shelf shouldn't appear).
-            guard NSPasteboard(name: .drag).changeCount != dragPasteboardBaseline else { return }
+            guard isContentDragActive() else { return }
             lastSummon = t
             shakeSamples.removeAll()
             DispatchQueue.main.async { [weak self] in self?.summon() }
         }
+    }
+
+    private func isContentDragActive() -> Bool {
+        let snapshot = dragPasteboardSnapshot()
+        if snapshot.changeCount != dragPasteboardBaseline.changeCount { return true }
+        return dragBeganInDock && snapshot.hasDroppableContent
+    }
+
+    private func dragPasteboardSnapshot() -> DragPasteboardSnapshot {
+        let pasteboard = NSPasteboard(name: .drag)
+        return DragPasteboardSnapshot(
+            changeCount: pasteboard.changeCount,
+            hasDroppableContent: pasteboardHasDroppableContent(pasteboard)
+        )
+    }
+
+    private func pasteboardHasDroppableContent(_ pasteboard: NSPasteboard) -> Bool {
+        guard let items = pasteboard.pasteboardItems, !items.isEmpty else { return false }
+        let directTypes: Set<String> = [
+            NSPasteboard.PasteboardType.fileURL.rawValue,
+            NSPasteboard.PasteboardType.string.rawValue,
+            NSPasteboard.PasteboardType.tiff.rawValue,
+            NSPasteboard.PasteboardType.png.rawValue,
+            UTType.fileURL.identifier,
+            UTType.image.identifier,
+            UTType.url.identifier,
+            UTType.text.identifier,
+            UTType.plainText.identifier,
+            "NSFilenamesPboardType",
+            "NSURLPboardType"
+        ]
+        let supportedUTTypes: [UTType] = [.fileURL, .image, .url, .text, .plainText]
+
+        for item in items {
+            for type in item.types {
+                if directTypes.contains(type.rawValue) { return true }
+                guard let utType = UTType(type.rawValue) else { continue }
+                if supportedUTTypes.contains(where: { utType.conforms(to: $0) }) { return true }
+            }
+        }
+        return false
+    }
+
+    private func eventBelongsToDock(_ event: NSEvent) -> Bool {
+        if let cgEvent = event.cgEvent {
+            let pid = pid_t(cgEvent.getIntegerValueField(.eventSourceUnixProcessID))
+            if isDockProcess(pid) { return true }
+        }
+
+        guard event.windowNumber > 0 else { return false }
+        guard let infos = CGWindowListCopyWindowInfo(.optionIncludingWindow,
+                                                     CGWindowID(event.windowNumber)) as? [[String: Any]],
+              let info = infos.first else { return false }
+        if let pidNumber = info[kCGWindowOwnerPID as String] as? NSNumber,
+           isDockProcess(pid_t(pidNumber.int32Value)) {
+            return true
+        }
+        return (info[kCGWindowOwnerName as String] as? String) == "Dock"
+    }
+
+    private func isDockProcess(_ pid: pid_t) -> Bool {
+        guard pid > 0 else { return false }
+        return NSRunningApplication(processIdentifier: pid)?.bundleIdentifier == "com.apple.dock"
     }
 
     // MARK: - Items
@@ -207,6 +287,7 @@ final class ShelfService: ObservableObject {
     func removeItem(_ id: UUID) {
         items.removeAll { $0.id == id }
         selection.remove(id)
+        noteInteraction()
     }
 
     /// Removes several items at once — used after a successful drag-out so the
@@ -215,15 +296,18 @@ final class ShelfService: ObservableObject {
         let set = Set(ids)
         items.removeAll { set.contains($0.id) }
         selection.subtract(set)
+        noteInteraction()
     }
 
     func clear() {
         items = []
         selection = []
+        noteInteraction()
     }
 
     func toggleSelection(_ id: UUID) {
         if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+        noteInteraction()
     }
 
     func selectedItems() -> [Item] {
@@ -270,6 +354,7 @@ final class ShelfService: ObservableObject {
 
     private func append(_ item: Item) {
         items.append(item)
+        noteInteraction()
     }
 
     private func symbol(_ name: String) -> NSImage {
@@ -284,12 +369,142 @@ final class ShelfService: ObservableObject {
 
     func summon() {
         let panel = ensurePanel()
+        cancelAutoHide()
         position(panel)
+        panel.alphaValue = 1
         panel.orderFrontRegardless()
+        updatePointerInsidePanel()
+        scheduleAutoHideIfIdle()
     }
 
     func hide() {
+        resetAutoHide()
         panel?.orderOut(nil)
+    }
+
+    func noteInteraction() {
+        guard panel?.isVisible == true else { return }
+        cancelAutoHideFade()
+        scheduleAutoHideIfIdle()
+    }
+
+    func setPointerInsidePanel(_ inside: Bool) {
+        pointerInsidePanel = inside
+        if inside {
+            cancelAutoHide()
+        } else {
+            scheduleAutoHideIfIdle()
+        }
+    }
+
+    func setDropTargeted(_ targeted: Bool) {
+        dropTargeted = targeted
+        if targeted {
+            cancelAutoHide()
+        } else {
+            scheduleAutoHideIfIdle()
+        }
+    }
+
+    func beginInteraction() {
+        interactionDepth += 1
+        cancelAutoHide()
+    }
+
+    func endInteraction() {
+        interactionDepth = max(0, interactionDepth - 1)
+        scheduleAutoHideIfIdle()
+    }
+
+    private func resetAutoHide() {
+        cancelAutoHide()
+        pointerInsidePanel = false
+        dropTargeted = false
+        interactionDepth = 0
+    }
+
+    private func cancelAutoHide() {
+        autoHideTimer?.invalidate()
+        autoHideTimer = nil
+        cancelAutoHideFade()
+    }
+
+    private func cancelAutoHideFade() {
+        autoHideFadeTimer?.invalidate()
+        autoHideFadeTimer = nil
+        autoHideFadeStart = nil
+        panel?.alphaValue = 1
+    }
+
+    private var shouldHoldOpen: Bool {
+        pointerInsidePanel || dropTargeted || interactionDepth > 0
+    }
+
+    private func scheduleAutoHideIfIdle() {
+        autoHideTimer?.invalidate()
+        autoHideTimer = nil
+        guard panel?.isVisible == true, !shouldHoldOpen else { return }
+
+        autoHideTimer = Timer.scheduledTimer(withTimeInterval: autoHideDelay, repeats: false) { [weak self] _ in
+            self?.autoHideIfIdle()
+        }
+        autoHideTimer?.tolerance = 0.5
+    }
+
+    private func autoHideIfIdle() {
+        autoHideTimer?.invalidate()
+        autoHideTimer = nil
+        updatePointerInsidePanel()
+        guard panel?.isVisible == true else { return }
+        guard !shouldHoldOpen else {
+            scheduleAutoHideIfIdle()
+            return
+        }
+        fadeOutAndHide()
+    }
+
+    private func updatePointerInsidePanel() {
+        guard let panel, panel.isVisible else {
+            pointerInsidePanel = false
+            return
+        }
+        pointerInsidePanel = panel.frame.contains(NSEvent.mouseLocation)
+    }
+
+    private func fadeOutAndHide() {
+        guard let panel, panel.isVisible else { return }
+        autoHideFadeTimer?.invalidate()
+        autoHideFadeStart = Date()
+        panel.alphaValue = 1
+
+        autoHideFadeTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { [weak self] timer in
+            guard let self, let panel = self.panel, panel.isVisible else {
+                timer.invalidate()
+                return
+            }
+            self.updatePointerInsidePanel()
+            guard !self.shouldHoldOpen else {
+                timer.invalidate()
+                self.autoHideFadeTimer = nil
+                self.autoHideFadeStart = nil
+                panel.alphaValue = 1
+                self.scheduleAutoHideIfIdle()
+                return
+            }
+            let elapsed = Date().timeIntervalSince(self.autoHideFadeStart ?? Date())
+            let progress = min(1, elapsed / self.autoHideFadeDuration)
+            panel.alphaValue = 1 - CGFloat(progress)
+            guard progress >= 1 else { return }
+            timer.invalidate()
+            self.autoHideFadeTimer = nil
+            self.autoHideFadeStart = nil
+            panel.orderOut(nil)
+            panel.alphaValue = 1
+            self.pointerInsidePanel = false
+            self.dropTargeted = false
+            self.interactionDepth = 0
+        }
+        autoHideFadeTimer?.tolerance = 0.02
     }
 
     /// Re-fits the panel to its content (anchored at the top-left) after items

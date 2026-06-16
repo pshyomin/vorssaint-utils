@@ -75,6 +75,13 @@ if (( DEV )); then
     /usr/libexec/PlistBuddy -c "Set :CFBundleName Vorssaint (Developer)" "$STAGE/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Vorssaint (Developer)" "$STAGE/Contents/Info.plist"
     /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable $EXECUTABLE" "$STAGE/Contents/Info.plist"
+    # Stamp the source commit + build time so the running dev app shows (in About)
+    # exactly which code it was compiled from. Lets you verify it matches HEAD before
+    # testing, instead of unknowingly running a stale build. Dev-only; never shipped.
+    SHA="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+    [[ -n "$(git status --porcelain 2>/dev/null)" ]] && SHA="$SHA-dirty"
+    /usr/libexec/PlistBuddy -c "Add :VorssaintBuildCommit string '$SHA · $(date '+%Y-%m-%d %H:%M')'" "$STAGE/Contents/Info.plist"
+    echo "  stamped dev build: $SHA"
 fi
 printf 'APPL????' > "$STAGE/Contents/PkgInfo"
 iconutil -c icns build/AppIcon.iconset -o "$STAGE/Contents/Resources/AppIcon.icns"

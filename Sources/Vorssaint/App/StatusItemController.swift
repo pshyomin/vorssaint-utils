@@ -1,9 +1,9 @@
 import AppKit
 import Combine
 
-/// Owns the menu bar presence: the black hole glyph with its active/inactive
-/// states, the click micro-interaction, the optional countdown title and the
-/// tooltip. Click handling is delegated back to the AppDelegate.
+/// Owns the menu bar presence: the black hole glyph, the click
+/// micro-interaction, the optional countdown title and the tooltip. Click
+/// handling is delegated back to the AppDelegate.
 final class StatusItemController {
     var onLeftClick: (() -> Void)?
     var onRightClick: (() -> Void)?
@@ -128,8 +128,8 @@ final class StatusItemController {
         SystemMonitor.shared.setMenuBarActive(MenuBarMetric.anyEnabled(in: defaults))
     }
 
-    /// Reflects keep-awake state and an available update in the icon: the glyph
-    /// turns blue when there's an update, for a discreet bit of attention.
+    /// Reflects keep-awake state and an available update in the icon. Updates
+    /// keep the blue attention color; an active keep-awake session turns amber.
     private func updateIconAppearance() {
         guard let button = statusItem?.button else { return }
         if case .available = UpdateService.shared.state {
@@ -224,9 +224,8 @@ final class StatusItemController {
     }
 }
 
-/// The official mark, bundled as a template image so it adapts to light and
-/// dark menu bars. Active renders at full strength; inactive is dimmed and
-/// discreet.
+/// The official mark, bundled as a template image so the idle state adapts to
+/// light and dark menu bars. Active states use real colors for attention.
 enum BlackHoleGlyph {
     /// Logical size of the glyph in the menu bar, in points.
     private static let pointSize = NSSize(width: 20, height: 14)
@@ -250,23 +249,26 @@ enum BlackHoleGlyph {
 
     static func image(active: Bool) -> NSImage? {
         guard let base else { return fallback(active: active) }
-        if active { return base }
+        return active ? awakeImage() ?? base : base
+    }
 
-        let dimmed = NSImage(size: base.size, flipped: false) { rect in
-            base.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 0.55)
-            return true
-        }
-        dimmed.isTemplate = true
-        return dimmed
+    /// Amber marks an active keep-awake session so it is easier to notice at a
+    /// glance than the normal adaptive menu bar icon.
+    static func awakeImage() -> NSImage? {
+        tintedImage(color: .systemOrange) ?? fallback(active: true)
     }
 
     /// A blue, full-strength glyph used to flag an available update. Non-template
     /// (a real color), drawn by masking blue into the glyph's shape.
     static func attentionImage() -> NSImage? {
-        guard let base else { return fallback(active: true) }
+        tintedImage(color: .systemBlue) ?? fallback(active: true)
+    }
+
+    private static func tintedImage(color: NSColor) -> NSImage? {
+        guard let base else { return nil }
         let tinted = NSImage(size: base.size, flipped: false) { rect in
             base.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
-            NSColor.systemBlue.setFill()
+            color.setFill()
             rect.fill(using: .sourceAtop)
             return true
         }
