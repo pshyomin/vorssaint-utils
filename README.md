@@ -15,7 +15,7 @@
 
 <p align="center"><sub>Também disponível em <a href="docs/README.pt-BR.md">Português (Brasil)</a>.</sub></p>
 
-Vorssaint is the one menu bar app that does the work of a whole shelf of paid Mac tools. Per app volume, a full system monitor, a window switcher, a file shelf, an app uninstaller, link cleaning, keep awake and a handful more, all living behind a single icon up in your menu bar. Install it once and stop paying for and juggling a pile of single purpose apps. It runs entirely on your Mac and stays out of your way. Free, open source, no account, no subscription and no telemetry.
+Vorssaint is the one menu bar app that does the work of a whole shelf of paid Mac tools. Per app volume, a full system monitor, a window switcher, a file shelf, an app uninstaller, link cleaning, keep awake and a handful more, all living behind a single icon up in your menu bar. Install it once and stop paying for and juggling a pile of single purpose apps. It is local-first and stays out of your way: core features run on your Mac, with network used only for update checks, speed tests and Homebrew actions you start. Free, open source, no account, no subscription and no Vorssaint telemetry.
 
 ## Everything in one menu bar app
 
@@ -85,19 +85,20 @@ Vorssaint is signed with an Apple Developer ID and notarized by Apple, so it ope
 
 ## Private by default
 
-Vorssaint runs on your machine and asks for nothing it does not need. No account, no telemetry, no analytics and no tracking. The one request it makes on its own is a quiet check for a newer version, which you can switch off, and the speed test only reaches out when you press start. The whole story is written up in the [privacy notes](docs/PRIVACY.md).
+Vorssaint runs on your machine and asks for nothing it does not need. No account, no telemetry, no Vorssaint analytics and no tracking. It has no cloud dashboard and no Vorssaint backend. Network access is limited to visible features: update checks, the speed test and Homebrew searches, analytics and installs when you use the Homebrew manager. The whole story is written up in the [privacy notes](docs/PRIVACY.md).
 
 Every macOS permission is optional, and the first run walks you through each one. A feature that is missing a permission simply stays quiet instead of breaking. Here is the short version, with the full picture in the [permissions guide](docs/PERMISSIONS.md).
 
 | Permission | Used by | Without it |
 |---|---|---|
-| Accessibility | Scroll direction, the switcher, Finder cut and paste, quit on close | Those features stay off |
-| Screen Recording | Window titles and thumbnails in the switcher | The switcher shows app icons only |
+| Accessibility | Scroll direction, the switcher, Dock Preview, Finder cut and paste, quit on close | Those features stay off |
+| Screen Recording | Window titles and thumbnails in the switcher and Dock Preview | Previews fall back or stay unavailable |
+| System Audio Recording | Per app volume and output routing in the mixer | Apps stay on normal system audio |
 | Notifications | Keep awake, battery and update alerts | The app stays silent |
 | Full Disk Access (optional) | A deeper uninstaller scan | It scans the reachable places only |
 | Administrator (once, optional) | Password free closed lid toggling | A password prompt on each toggle |
 
-Finder cut and paste and the uninstaller also ask macOS for Automation access the first time they talk to Finder. The shelf needs no permission at all.
+Finder cut and paste, the uninstaller and Homebrew's Terminal handoff can also ask macOS for Automation access the first time they talk to Finder or Terminal. The shelf needs no permission at all.
 
 ## What you need
 
@@ -126,7 +127,7 @@ App blocked on first launch, a permission that will not take hold, or the switch
 ./Tools/uninstall.sh
 ```
 
-The script quits the app, drops the login item, resets its Accessibility and Screen Recording access, deletes the app along with its preferences and saved state, and removes the optional closed lid rule, so nothing is left behind. You can also drag the app to the Trash and run `tccutil reset All com.vorssaint.utils` to clear its permissions.
+The script quits the app, drops the login item, resets its privacy grants, deletes the app along with its preferences and saved state, and removes the optional closed lid rule, so nothing is left behind. You can also drag the app to the Trash and run `tccutil reset All com.vorssaint.utils` to clear its permissions.
 
 ## Documentation
 

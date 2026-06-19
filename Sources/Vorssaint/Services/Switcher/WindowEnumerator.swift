@@ -5,15 +5,18 @@ import AppKit
 import ApplicationServices
 import CoreGraphics
 
-/// Builds the list of switchable windows from the window server.
+/// Builds the list of switchable windows from the window server and
+/// Accessibility.
 ///
 /// `CGWindowListCopyWindowInfo` is queried with `.optionAll` so windows that
-/// are minimized or parked on other Spaces are included. The result is then
-/// ordered by the app activation MRU (see `AppActivationTracker`), so the
-/// switcher matches the system ⌘Tab toggle. Window titles require Screen
-/// Recording on modern macOS; Vorssaint's own titled windows use NSWindow
-/// metadata so Settings remains reachable even though the app is a menu-bar
-/// accessory.
+/// are minimized or parked on other Spaces are included when WindowServer
+/// exposes them. Fullscreen windows on other Spaces can be missing from that
+/// list, so Accessibility supplies a second pass for real app windows by id.
+/// The result is then ordered by the app activation MRU (see
+/// `AppActivationTracker`), so the switcher matches the system ⌘Tab toggle.
+/// Window titles require Screen Recording on modern macOS; Vorssaint's own
+/// titled windows use NSWindow metadata so Settings remains reachable even
+/// though the app is a menu-bar accessory.
 enum WindowEnumerator {
     /// Window surfaces larger than this are considered real, switchable windows.
     private static let minimumSize = CGSize(width: 80, height: 60)
@@ -21,9 +24,24 @@ enum WindowEnumerator {
     private static let maximumCount = 24
 
     static func listWindows() -> [SwitcherItem] {
-        guard let raw = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] else {
-            return []
-        }
+        listWindows(filterPID: nil,
+                    maximumCount: maximumCount,
+                    includeWindowlessFinder: true,
+                    groupByApp: UserDefaults.standard.bool(forKey: DefaultsKey.switcherMergeTabs))
+    }
+
+    static func listWindows(for pid: pid_t, maximumCount: Int = 12) -> [SwitcherItem] {
+        listWindows(filterPID: pid,
+                    maximumCount: maximumCount,
+                    includeWindowlessFinder: false,
+                    groupByApp: false)
+    }
+
+    private static func listWindows(filterPID: pid_t?,
+                                    maximumCount: Int,
+                                    includeWindowlessFinder: Bool,
+                                    groupByApp: Bool) -> [SwitcherItem] {
+        let raw = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] ?? []
 
         let ownPid = ProcessInfo.processInfo.processIdentifier
         var regularApps: [pid_t: String] = [:]
@@ -31,7 +49,7 @@ enum WindowEnumerator {
             regularApps[app.processIdentifier] = app.localizedName ?? ""
         }
         regularApps[pid_t(ownPid)] = AppInfo.name
-        let liveWindowIDs = accessibilityWindowIDs(for: Set(regularApps.keys).subtracting([pid_t(ownPid)]))
+        let accessibilityWindows = accessibilityWindows(for: Set(regularApps.keys).subtracting([pid_t(ownPid)]))
 
         var seen = Set<CGWindowID>()
         var windows: [SwitcherItem] = []
@@ -44,14 +62,17 @@ enum WindowEnumerator {
                   let pid = (info[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value,
                   let boundsDict = info[kCGWindowBounds as String] as? [String: Any]
             else { continue }
-            if let liveIDs = liveWindowIDs[pid], !liveIDs.contains(CGWindowID(windowID)) {
+            if let filterPID, pid != filterPID { continue }
+            let axWindow = accessibilityWindows[pid]?.byID[CGWindowID(windowID)]
+            if accessibilityWindows[pid] != nil, axWindow == nil {
                 continue
             }
 
-            let frame = CGRect(x: (boundsDict["X"] as? NSNumber)?.doubleValue ?? 0,
-                               y: (boundsDict["Y"] as? NSNumber)?.doubleValue ?? 0,
-                               width: (boundsDict["Width"] as? NSNumber)?.doubleValue ?? 0,
-                               height: (boundsDict["Height"] as? NSNumber)?.doubleValue ?? 0)
+            let cgFrame = CGRect(x: (boundsDict["X"] as? NSNumber)?.doubleValue ?? 0,
+                                 y: (boundsDict["Y"] as? NSNumber)?.doubleValue ?? 0,
+                                 width: (boundsDict["Width"] as? NSNumber)?.doubleValue ?? 0,
+                                 height: (boundsDict["Height"] as? NSNumber)?.doubleValue ?? 0)
+            let frame = frameIsSwitchable(cgFrame) ? cgFrame : (axWindow?.frame ?? cgFrame)
             guard frame.width >= minimumSize.width, frame.height >= minimumSize.height else { continue }
 
             if let alpha = (info[kCGWindowAlpha as String] as? NSNumber)?.doubleValue, alpha == 0 { continue }
@@ -70,12 +91,15 @@ enum WindowEnumerator {
             } else {
                 guard let name = regularApps[pid] else { continue }
                 appName = name
-                displayTitle = title
+                displayTitle = title.isEmpty ? (axWindow?.title ?? "") : title
             }
 
             // Off-screen *and* untitled windows are usually invisible helpers
-            // (web pickers, framework shells), not something to switch to.
-            if !isOnScreen && displayTitle.isEmpty { continue }
+            // (web pickers, framework shells), not something to switch to. But
+            // fullscreen windows on another Space can be reported off-screen
+            // and untitled by WindowServer; if Accessibility confirms the same
+            // window id, keep it switchable and fall back to the app name.
+            if !isOnScreen && displayTitle.isEmpty && axWindow == nil { continue }
 
             seen.insert(windowID)
             windows.append(.window(id: windowID,
@@ -85,8 +109,16 @@ enum WindowEnumerator {
                                    isOnScreen: isOnScreen,
                                    frame: frame))
         }
-        appendWindowlessFinder(to: &windows, regularApps: regularApps)
-        if UserDefaults.standard.bool(forKey: DefaultsKey.switcherMergeTabs) {
+        appendAccessibilityOnlyWindows(to: &windows,
+                                       snapshots: accessibilityWindows,
+                                       regularApps: regularApps,
+                                       seen: &seen,
+                                       filterPID: filterPID,
+                                       maximumCount: maximumCount)
+        if includeWindowlessFinder {
+            appendWindowlessFinder(to: &windows, regularApps: regularApps)
+        }
+        if groupByApp {
             windows = groupWindowsByApp(windows)
         }
         return orderByActivation(windows)
@@ -95,37 +127,170 @@ enum WindowEnumerator {
     /// WindowServer can keep stale, titled surfaces around after some apps close
     /// tabs or windows. Cross-checking against Accessibility removes those ghosts
     /// while preserving minimized windows and windows on other Spaces.
-    private static func accessibilityWindowIDs(for pids: Set<pid_t>) -> [pid_t: Set<CGWindowID>] {
+    private struct AccessibilityWindowSnapshot {
+        let title: String
+        let frame: CGRect?
+    }
+
+    private struct AccessibilityWindowSnapshotList {
+        let ordered: [(id: CGWindowID, snapshot: AccessibilityWindowSnapshot)]
+        let byID: [CGWindowID: AccessibilityWindowSnapshot]
+    }
+
+    private static func accessibilityWindows(for pids: Set<pid_t>) -> [pid_t: AccessibilityWindowSnapshotList] {
         guard Permissions.shared.accessibility else { return [:] }
 
-        var result: [pid_t: Set<CGWindowID>] = [:]
+        var result: [pid_t: AccessibilityWindowSnapshotList] = [:]
         for pid in pids {
-            guard let ids = accessibilityWindowIDs(for: pid) else { continue }
-            result[pid] = ids
+            guard let windows = accessibilityWindows(for: pid) else { continue }
+            result[pid] = windows
         }
         return result
     }
 
-    private static func accessibilityWindowIDs(for pid: pid_t) -> Set<CGWindowID>? {
+    private static func accessibilityWindows(for pid: pid_t) -> AccessibilityWindowSnapshotList? {
         let app = AXUIElementCreateApplication(pid)
+        var axWindows: [AXUIElement] = []
         var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &value) == .success,
-              let axWindows = value as? [AXUIElement]
-        else { return nil }
+        if AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &value) == .success,
+           let windows = value as? [AXUIElement] {
+            for window in windows where isUserFacingWindow(window) {
+                appendUnique(window, to: &axWindows)
+            }
+        }
+        for attribute in [kAXMainWindowAttribute, kAXFocusedWindowAttribute] {
+            if let window = accessibilityWindowAttribute(app, attribute as String),
+               isUserFacingWindow(window) {
+                appendUnique(window, to: &axWindows)
+            }
+        }
 
-        var ids = Set<CGWindowID>()
+        var byID: [CGWindowID: AccessibilityWindowSnapshot] = [:]
+        var ordered: [(id: CGWindowID, snapshot: AccessibilityWindowSnapshot)] = []
         for window in axWindows {
             if let id = AXWindowResolver.windowID(for: window) {
-                ids.insert(id)
+                let snapshot = AccessibilityWindowSnapshot(title: accessibilityTitle(for: window),
+                                                           frame: accessibilityFrame(for: window))
+                byID[id] = snapshot
+                ordered.append((id, snapshot))
             }
         }
 
         // If an app reports AX windows but none resolve to WindowServer ids,
         // keep the old behavior instead of hiding a real window for that app.
-        if axWindows.isEmpty || !ids.isEmpty {
-            return ids
+        if axWindows.isEmpty || !ordered.isEmpty {
+            return AccessibilityWindowSnapshotList(ordered: ordered, byID: byID)
         }
         return nil
+    }
+
+    private static func appendAccessibilityOnlyWindows(to windows: inout [SwitcherItem],
+                                                       snapshots: [pid_t: AccessibilityWindowSnapshotList],
+                                                       regularApps: [pid_t: String],
+                                                       seen: inout Set<CGWindowID>,
+                                                       filterPID: pid_t?,
+                                                       maximumCount: Int) {
+        let tracker = AppActivationTracker.shared
+        let pids = snapshots.keys
+            .filter { pid in
+                guard pid != ProcessInfo.processInfo.processIdentifier,
+                      regularApps[pid] != nil else { return false }
+                return filterPID == nil || pid == filterPID
+            }
+            .sorted { lhs, rhs in
+                let rankL = tracker.rank(of: lhs)
+                let rankR = tracker.rank(of: rhs)
+                return rankL != rankR ? rankL < rankR : lhs < rhs
+            }
+
+        for pid in pids {
+            guard windows.count < maximumCount,
+                  let appName = regularApps[pid],
+                  let list = snapshots[pid] else { continue }
+            for entry in list.ordered {
+                guard windows.count < maximumCount else { return }
+                guard !seen.contains(entry.id),
+                      let frame = entry.snapshot.frame,
+                      frameIsSwitchable(frame) else { continue }
+                seen.insert(entry.id)
+                windows.append(.window(id: entry.id,
+                                       title: entry.snapshot.title,
+                                       appName: appName,
+                                       pid: pid,
+                                       isOnScreen: false,
+                                       frame: frame))
+            }
+        }
+    }
+
+    private static func accessibilityTitle(for window: AXUIElement) -> String {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(window, kAXTitleAttribute as CFString, &value) == .success else {
+            return ""
+        }
+        return value as? String ?? ""
+    }
+
+    private static func accessibilityFrame(for window: AXUIElement) -> CGRect? {
+        var positionValue: CFTypeRef?
+        var sizeValue: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionValue) == .success,
+              AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeValue) == .success,
+              let positionValue,
+              let sizeValue,
+              CFGetTypeID(positionValue) == AXValueGetTypeID(),
+              CFGetTypeID(sizeValue) == AXValueGetTypeID()
+        else { return nil }
+
+        var position = CGPoint.zero
+        var size = CGSize.zero
+        guard AXValueGetValue(positionValue as! AXValue, .cgPoint, &position),
+              AXValueGetValue(sizeValue as! AXValue, .cgSize, &size)
+        else { return nil }
+        return CGRect(origin: position, size: size)
+    }
+
+    private static func frameIsSwitchable(_ frame: CGRect) -> Bool {
+        frame.width >= minimumSize.width && frame.height >= minimumSize.height
+    }
+
+    private static func isUserFacingWindow(_ window: AXUIElement) -> Bool {
+        if boolAttribute(window, "AXFullScreen") { return true }
+        if let subrole = stringAttribute(window, kAXSubroleAttribute as String) {
+            return subrole == "AXStandardWindow" || subrole == "AXFullScreenWindow"
+        }
+        return stringAttribute(window, kAXRoleAttribute as String) == "AXWindow"
+    }
+
+    private static func appendUnique(_ window: AXUIElement, to windows: inout [AXUIElement]) {
+        guard !windows.contains(where: { CFEqual($0, window) }) else { return }
+        windows.append(window)
+    }
+
+    private static func accessibilityWindowAttribute(_ app: AXUIElement, _ attribute: String) -> AXUIElement? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, attribute as CFString, &value) == .success,
+              let value,
+              CFGetTypeID(value) == AXUIElementGetTypeID()
+        else { return nil }
+        return (value as! AXUIElement)
+    }
+
+    private static func stringAttribute(_ element: AXUIElement, _ attribute: String) -> String? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
+              let value else { return nil }
+        return value as? String
+    }
+
+    private static func boolAttribute(_ element: AXUIElement, _ attribute: String) -> Bool {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success,
+              let value else { return false }
+        guard CFGetTypeID(value) == CFBooleanGetTypeID() else {
+            return (value as? Bool) ?? false
+        }
+        return CFBooleanGetValue((value as! CFBoolean))
     }
 
     private static func appendWindowlessFinder(to windows: inout [SwitcherItem],

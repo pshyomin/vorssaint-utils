@@ -11,7 +11,7 @@ import ApplicationServices
 enum WindowActivator {
     private static let focusRetryDelay: TimeInterval = 0.12
 
-    static func activate(_ item: SwitcherItem) {
+    static func activate(_ item: SwitcherItem, retry: Bool = true) {
         if item.pid == ProcessInfo.processInfo.processIdentifier {
             activateOwnWindow(item)
             return
@@ -27,12 +27,53 @@ enum WindowActivator {
         focusWindow(windowID: windowID, pid: item.pid)
         activateApp(app)
 
+        guard retry else { return }
         let pid = item.pid
         DispatchQueue.main.asyncAfter(deadline: .now() + focusRetryDelay) {
             guard let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated else { return }
             focusWindow(windowID: windowID, pid: pid)
             activateApp(app)
         }
+    }
+
+    static func activate(pid: pid_t, windowID: CGWindowID?, appName: String, retry: Bool = true) {
+        let item: SwitcherItem
+        if let windowID {
+            item = .window(id: windowID, title: appName, appName: appName,
+                           pid: pid, isOnScreen: true, frame: .zero)
+        } else {
+            item = .appOnly(appName: appName, pid: pid)
+        }
+        activate(item, retry: retry)
+    }
+
+    static func focusedWindowID(for pid: pid_t) -> CGWindowID? {
+        guard Permissions.shared.accessibility else { return nil }
+        let app = AXUIElementCreateApplication(pid)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &value) == .success,
+              let value,
+              CFGetTypeID(value) == AXUIElementGetTypeID()
+        else { return nil }
+        return AXWindowResolver.windowID(for: value as! AXUIElement)
+    }
+
+    static func windowIsMinimized(windowID: CGWindowID, pid: pid_t) -> Bool {
+        guard Permissions.shared.accessibility else { return false }
+        let axApp = AXUIElementCreateApplication(pid)
+        guard let axWindow = axElement(windowID: windowID, in: axApp) else { return false }
+        var minimized: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(axWindow, kAXMinimizedAttribute as CFString, &minimized) == .success
+        else { return false }
+        return (minimized as? Bool) == true
+    }
+
+    static func setWindowMinimized(_ minimized: Bool, windowID: CGWindowID, pid: pid_t) {
+        guard Permissions.shared.accessibility else { return }
+        let axApp = AXUIElementCreateApplication(pid)
+        guard let axWindow = axElement(windowID: windowID, in: axApp) else { return }
+        AXUIElementSetAttributeValue(axWindow, kAXMinimizedAttribute as CFString,
+                                     minimized ? kCFBooleanTrue : kCFBooleanFalse)
     }
 
     private static func activateOwnWindow(_ item: SwitcherItem) {

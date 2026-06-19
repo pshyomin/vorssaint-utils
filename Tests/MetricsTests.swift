@@ -64,6 +64,16 @@ struct MetricsTests {
         expectEqual(MetricFormat.temperature(0, unit: .fahrenheit), "32 °F", "fahrenheit freezing")
         expectEqual(MetricFormat.temperature(41, unit: .fahrenheit), "106 °F", "fahrenheit rounds")
 
+        // MARK: Uptime formatting
+
+        expectEqual(MetricFormat.uptime(0), "0min", "uptime zero")
+        expectEqual(MetricFormat.uptime(59), "0min", "uptime under one minute")
+        expectEqual(MetricFormat.uptime(60), "1min", "uptime one minute")
+        expectEqual(MetricFormat.uptime(3_600), "1h 0min", "uptime one hour")
+        expectEqual(MetricFormat.uptime(93_600), "1d 2h", "uptime days and hours")
+        expectEqual(MetricFormat.uptime(8 * 86_400 + 21 * 3_600 + 8 * 60), "8d 21h",
+                    "uptime keeps days compact")
+
         // MARK: Memory used
 
         let used = MetricFormat.memoryUsed(totalBytes: 16 * 1024,
@@ -83,6 +93,8 @@ struct MetricsTests {
                "global hotkey is on for clean installs")
         expect(registeredDefaults[DefaultsKey.switcherEnabled] as? Bool == true,
                "window switcher is on for clean installs")
+        expect(registeredDefaults[DefaultsKey.dockPreviewEnabled] as? Bool == false,
+               "Dock Preview is opt-in for clean installs")
         expect(registeredDefaults[DefaultsKey.autoCheckUpdates] as? Bool == true,
                "update checks are on for clean installs")
         expect(registeredDefaults[DefaultsKey.shelfShakeToOpen] as? Bool == true,
@@ -97,10 +109,14 @@ struct MetricsTests {
                "panel URL cleaner utility is visible by default")
         expect(registeredDefaults[DefaultsKey.panelUtilityUninstaller] as? Bool == true,
                "panel uninstaller utility is visible by default")
+        expect(registeredDefaults[DefaultsKey.panelUtilityHomebrew] as? Bool == true,
+               "panel Homebrew utility is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlMouseScroll] as? Bool == true,
                "panel mouse scroll control is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlSwitcher] as? Bool == true,
                "panel switcher control is visible by default")
+        expect(registeredDefaults[DefaultsKey.panelControlDockPreview] as? Bool == true,
+               "panel Dock Preview control is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlCutPaste] as? Bool == true,
                "panel cut and paste control is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlAutoQuit] as? Bool == true,
@@ -109,6 +125,12 @@ struct MetricsTests {
                "panel shelf control is visible by default")
         expect(registeredDefaults[DefaultsKey.panelControlWindowMaximize] as? Bool == true,
                "panel window maximize control is visible by default")
+        expect(registeredDefaults[DefaultsKey.panelShowKeepAwake] as? Bool == true,
+               "Keep Awake panel section is shown by default")
+        expect(registeredDefaults[DefaultsKey.panelShowUtilities] as? Bool == true,
+               "Utilities panel section is shown by default")
+        expect(registeredDefaults[DefaultsKey.panelShowControls] as? Bool == true,
+               "Quick Controls panel section is shown by default")
         expect(registeredDefaults[DefaultsKey.monitorInterval] as? Int == 2,
                "monitor default interval stays at 2 seconds")
         expect(registeredDefaults[DefaultsKey.temperatureUnit] as? String == TemperatureUnit.celsius.rawValue,
@@ -121,6 +143,8 @@ struct MetricsTests {
                "Finder stays in the default auto-quit exception list")
         expect(registeredDefaults[DefaultsKey.panelCollapsedSections] == nil,
                "panel collapsed sections intentionally has no registered default")
+        expect(registeredDefaults[DefaultsKey.panelUtilityOrder] == nil,
+               "panel utility order intentionally has no registered default")
         expect(Defaults.sanitizedDefaultDuration(60) == 60, "valid default duration is preserved")
         expect(Defaults.sanitizedDefaultDuration(999) == 0, "invalid default duration falls back to indefinite")
         expect(Defaults.sanitizedBatteryLimit(15) == 15, "valid battery limit is preserved")
@@ -137,10 +161,177 @@ struct MetricsTests {
         expect(Defaults.sanitizedAutoQuitExceptions(["com.example.One", Defaults.finderBundleIdentifier])
                == [Defaults.finderBundleIdentifier, "com.example.One"],
                "Finder is mandatory in the auto-quit exception list")
+        expect(Defaults.sanitizedPanelItemOrder("uninstaller,homebrew,homebrew,bad",
+                                                defaultOrder: ["homebrew", "uninstaller", "cleanURL", "cleaning"])
+               == ["uninstaller", "homebrew", "cleanURL", "cleaning"],
+               "panel item order keeps saved valid items first and appends defaults")
         expectClose(Defaults.sanitizedAppVolume(1.5), 1.5, "valid app volume is preserved")
         expectClose(Defaults.sanitizedAppVolume(3), 2, "high app volume clamps to boost maximum")
         expectClose(Defaults.sanitizedAppVolume(-1), 0, "negative app volume clamps to mute")
         expectClose(Defaults.sanitizedAppVolume(.infinity), 1, "non-finite app volume falls back to unity")
+        expect(Defaults.sanitizedAppOutputDeviceUID(" BuiltInSpeakerDevice ") == "BuiltInSpeakerDevice",
+               "audio output device UIDs are trimmed")
+        expect(Defaults.sanitizedAppOutputDeviceUID("") == nil,
+               "empty audio output device UIDs are ignored")
+        expect(Defaults.sanitizedAppOutputDeviceUID("bad\nuid") == nil,
+               "control characters are rejected from audio output device UIDs")
+        expect(Defaults.sanitizedPreferredInputDeviceUID(" BuiltInMicrophoneDevice ") == "BuiltInMicrophoneDevice",
+               "audio input device UIDs are trimmed")
+        expect(Defaults.sanitizedPreferredInputDeviceUID("") == nil,
+               "empty audio input device UIDs are ignored")
+        let savedRoutes = Defaults.sanitizedAppOutputDevices([
+            "com.apple.Safari": "BuiltInSpeakerDevice",
+            "bad\napp": "ExternalDisplay",
+            "com.example.Empty": "",
+        ])
+        expect(savedRoutes == ["com.apple.Safari": "BuiltInSpeakerDevice"],
+               "app output device routes keep only valid app and device ids")
+        expect(!MixerRoutingSupport.requiresEngine(volume: 1,
+                                                   selectedOutputDeviceUID: nil,
+                                                   targetOutputDeviceUID: "BuiltInSpeakerDevice",
+                                                   defaultOutputDeviceUID: "BuiltInSpeakerDevice"),
+               "default output at 100 percent stays passthrough")
+        expect(MixerRoutingSupport.requiresEngine(volume: 0.5,
+                                                  selectedOutputDeviceUID: nil,
+                                                  targetOutputDeviceUID: "BuiltInSpeakerDevice",
+                                                  defaultOutputDeviceUID: "BuiltInSpeakerDevice"),
+               "default output with changed volume uses an engine")
+        expect(MixerRoutingSupport.requiresEngine(volume: 1,
+                                                  selectedOutputDeviceUID: "ExternalDisplay",
+                                                  targetOutputDeviceUID: "ExternalDisplay",
+                                                  defaultOutputDeviceUID: "BuiltInSpeakerDevice"),
+               "specific non-default output at 100 percent uses an engine")
+        expect(MixerRoutingSupport.effectiveDeviceUID(selectedUID: "ExternalDisplay",
+                                                      availableUIDs: ["BuiltInSpeakerDevice"],
+                                                      defaultUID: "BuiltInSpeakerDevice") == "BuiltInSpeakerDevice",
+               "missing saved output falls back to default")
+        expect(MixerRoutingSupport.selectedDeviceUnavailable(selectedUID: "ExternalDisplay",
+                                                             availableUIDs: ["BuiltInSpeakerDevice"]),
+               "missing saved output is marked unavailable without deleting the preference")
+        let defaultInput = MixerRoutingSupport.resolveInputDevice(
+            preferredUID: nil,
+            availableUIDs: ["BuiltInMicrophoneDevice"],
+            currentUID: "BuiltInMicrophoneDevice")
+        expect(defaultInput == MixerInputRouteResolution(effectiveUID: "BuiltInMicrophoneDevice",
+                                                         selectedUnavailable: false,
+                                                         shouldApplyPreferred: false),
+               "no preferred input follows the current system input")
+        let connectedPreferredInput = MixerRoutingSupport.resolveInputDevice(
+            preferredUID: "StudioMic",
+            availableUIDs: ["BuiltInMicrophoneDevice", "StudioMic"],
+            currentUID: "BuiltInMicrophoneDevice")
+        expect(connectedPreferredInput == MixerInputRouteResolution(effectiveUID: "StudioMic",
+                                                                    selectedUnavailable: false,
+                                                                    shouldApplyPreferred: true),
+               "connected preferred input is applied when different from current")
+        let alreadyCurrentInput = MixerRoutingSupport.resolveInputDevice(
+            preferredUID: "StudioMic",
+            availableUIDs: ["BuiltInMicrophoneDevice", "StudioMic"],
+            currentUID: "StudioMic")
+        expect(!alreadyCurrentInput.shouldApplyPreferred,
+               "preferred input is not reapplied when already current")
+        let disconnectedPreferredInput = MixerRoutingSupport.resolveInputDevice(
+            preferredUID: "StudioMic",
+            availableUIDs: ["BuiltInMicrophoneDevice"],
+            currentUID: "BuiltInMicrophoneDevice")
+        expect(disconnectedPreferredInput == MixerInputRouteResolution(effectiveUID: "BuiltInMicrophoneDevice",
+                                                                       selectedUnavailable: true,
+                                                                       shouldApplyPreferred: false),
+               "missing preferred input falls back visually without deleting preference")
+
+        // MARK: Dock Preview helpers
+
+        let dockPrefs = DockPreviewPreferences.sanitized(orientation: "left",
+                                                         autohide: true,
+                                                         tileSize: 81,
+                                                         magnification: false)
+        expect(dockPrefs == DockPreviewPreferences(orientation: .left,
+                                                   autohide: true,
+                                                   tileSize: 81,
+                                                   magnification: false),
+               "Dock Preview preferences preserve valid Dock values")
+        let fallbackDockPrefs = DockPreviewPreferences.sanitized(orientation: "bad",
+                                                                 autohide: nil,
+                                                                 tileSize: 999,
+                                                                 magnification: nil)
+        expect(fallbackDockPrefs == DockPreviewPreferences(orientation: .bottom,
+                                                           autohide: false,
+                                                           tileSize: 256,
+                                                           magnification: false),
+               "Dock Preview preferences sanitize missing and out-of-range values")
+        expect(DockPreviewSupport.availability(enabled: false,
+                                               hasAccessibility: true,
+                                               hasScreenRecording: true,
+                                               preferences: dockPrefs)
+               == DockPreviewAvailability(canRun: false, blockedReason: nil),
+               "disabled Dock Preview does not report an error")
+        expect(DockPreviewSupport.availability(enabled: true,
+                                               hasAccessibility: false,
+                                               hasScreenRecording: true,
+                                               preferences: dockPrefs).blockedReason == .missingAccessibility,
+               "Dock Preview requires Accessibility")
+        expect(DockPreviewSupport.availability(enabled: true,
+                                               hasAccessibility: true,
+                                               hasScreenRecording: false,
+                                               preferences: dockPrefs).blockedReason == .missingScreenRecording,
+               "Dock Preview requires Screen Recording")
+        let magnifiedPrefs = DockPreviewPreferences(orientation: .bottom,
+                                                    autohide: false,
+                                                    tileSize: 64,
+                                                    magnification: true)
+        expect(DockPreviewSupport.availability(enabled: true,
+                                               hasAccessibility: true,
+                                               hasScreenRecording: true,
+                                               preferences: magnifiedPrefs).blockedReason == .magnification,
+               "Dock Preview blocks Dock magnification")
+        expect(DockPreviewSupport.availability(enabled: true,
+                                               hasAccessibility: true,
+                                               hasScreenRecording: true,
+                                               preferences: dockPrefs).canRun,
+               "Dock Preview can run when enabled, permitted and not magnified")
+
+        let screen = CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let iconBottom = CGRect(x: 660, y: 0, width: 80, height: 80)
+        let panelSize = CGSize(width: 400, height: 160)
+        let bottomFrame = DockPreviewSupport.panelFrame(anchor: iconBottom,
+                                                        panelSize: panelSize,
+                                                        screenVisibleFrame: screen,
+                                                        orientation: .bottom)
+        expectClose(Double(bottomFrame.midX), Double(iconBottom.midX), "Dock Preview bottom panel centers on icon")
+        expect(bottomFrame.minY > iconBottom.maxY,
+               "Dock Preview bottom panel sits above the Dock icon")
+        let leftFrame = DockPreviewSupport.panelFrame(anchor: CGRect(x: 0, y: 380, width: 80, height: 80),
+                                                      panelSize: panelSize,
+                                                      screenVisibleFrame: screen,
+                                                      orientation: .left)
+        expect(leftFrame.minX > 80,
+               "Dock Preview left panel sits to the right of the Dock")
+        let rightFrame = DockPreviewSupport.panelFrame(anchor: CGRect(x: 1360, y: 380, width: 80, height: 80),
+                                                       panelSize: panelSize,
+                                                       screenVisibleFrame: screen,
+                                                       orientation: .right)
+        expect(rightFrame.maxX < 1360,
+               "Dock Preview right panel sits to the left of the Dock")
+        let corridor = DockPreviewSupport.hoverCorridor(iconFrame: iconBottom,
+                                                        panelFrame: bottomFrame,
+                                                        orientation: .bottom)
+        expect(corridor.contains(CGPoint(x: iconBottom.midX, y: (iconBottom.maxY + bottomFrame.minY) / 2)),
+               "Dock Preview corridor keeps the path from Dock icon to panel alive")
+        // A neighbouring Dock icon, one tile to the side, must fall OUTSIDE the
+        // corridor; otherwise returning to the Dock can never hand the session to
+        // another app and the panel stays stuck on the previous one.
+        let neighborIcon = CGRect(x: iconBottom.maxX + 8, y: 0, width: 80, height: 80)
+        expect(!corridor.contains(CGPoint(x: neighborIcon.midX, y: neighborIcon.midY)),
+               "Dock Preview corridor excludes the neighbouring Dock icon so app switching works")
+        expect(DockPreviewSupport.shouldRestoreOnEnd(committed: false),
+               "Dock Preview restores the previous window when cancelled")
+        expect(!DockPreviewSupport.shouldRestoreOnEnd(committed: true),
+               "Dock Preview does not restore after a confirmed click")
+        expect(DockPreviewSupport.dockProximityBand(tileSize: 64) >= 160,
+               "Dock proximity band covers a default-size Dock")
+        expect(DockPreviewSupport.dockProximityBand(tileSize: 200)
+               > DockPreviewSupport.dockProximityBand(tileSize: 64),
+               "Dock proximity band grows with the Dock tile size")
 
         // MARK: Release notes parsing
 
@@ -193,6 +384,142 @@ struct MetricsTests {
         expect(URLCleaning.cleanedString(from: "not a url") == nil,
                "URL cleaner rejects plain text")
 
+        // MARK: Homebrew command building and parsing
+
+        expect(HomebrewPackageKind.allCases == [.cask, .formula],
+               "Homebrew package kinds keep casks before formulae")
+        expect(HomebrewCommandBuilder.isValidToken("jq"), "simple Homebrew token is valid")
+        expect(HomebrewCommandBuilder.isValidToken("python@3.14"), "versioned formula token is valid")
+        expect(HomebrewCommandBuilder.isValidToken("visual-studio-code"), "cask token is valid")
+        expect(HomebrewCommandBuilder.isValidToken("homebrew/cask-fonts/font-iosevka"), "tapped token is valid")
+        expect(!HomebrewCommandBuilder.isValidToken(""), "empty Homebrew token is invalid")
+        expect(!HomebrewCommandBuilder.isValidToken("-bad"), "leading dash Homebrew token is invalid")
+        expect(!HomebrewCommandBuilder.isValidToken("../bad"), "path traversal Homebrew token is invalid")
+        expect(!HomebrewCommandBuilder.isValidToken("bad token"), "spaced Homebrew token is invalid")
+
+        let brewPath = "/opt/homebrew/bin/brew"
+        let cask = HomebrewPackage(kind: .cask, name: "visual-studio-code",
+                                   displayName: "Visual Studio Code", desc: nil,
+                                   installedVersion: nil, stableVersion: nil, homepage: nil)
+        expect(HomebrewCommandBuilder.search(brewPath: brewPath, kind: .formula, query: "jq").arguments
+               == ["search", "--formula", "jq"],
+               "formula search command uses separated arguments")
+        expect(HomebrewCommandBuilder.install(brewPath: brewPath, package: cask).arguments
+               == ["install", "--cask", "visual-studio-code"],
+               "cask install command uses --cask")
+        expect(HomebrewCommandBuilder.uninstall(brewPath: brewPath, package: cask).arguments
+               == ["uninstall", "--cask", "visual-studio-code"],
+               "cask uninstall command uses --cask")
+        expect(HomebrewCommandBuilder.needsTerminalFallback(output: "sudo: a terminal is required to read the password"),
+               "sudo terminal error triggers Homebrew terminal fallback")
+        expect(HomebrewCommandBuilder.installerCommand == #"/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)""#,
+               "Homebrew installer command matches the official install script entrypoint")
+        expectEqual(HomebrewCommandBuilder.shellProfilePath(homeDirectory: "/Users/test", shellPath: "/bin/zsh"),
+                    "/Users/test/.zprofile",
+                    "Homebrew shell setup uses zprofile for zsh")
+        expectEqual(HomebrewCommandBuilder.shellProfilePath(homeDirectory: "/Users/test", shellPath: "/bin/bash"),
+                    "/Users/test/.bash_profile",
+                    "Homebrew shell setup uses bash_profile for bash")
+        expectEqual(HomebrewCommandBuilder.shellEnvLine(brewPath: brewPath),
+                    #"eval "$(/opt/homebrew/bin/brew shellenv)""#,
+                    "Homebrew shell setup line uses brew shellenv")
+        expectEqual(HomebrewAnalytics.url(kind: .formula).absoluteString,
+                    "https://formulae.brew.sh/api/analytics/install-on-request/homebrew-core/30d.json",
+                    "Homebrew formula popularity uses install-on-request analytics")
+        expectEqual(HomebrewAnalytics.url(kind: .cask).absoluteString,
+                    "https://formulae.brew.sh/api/analytics/cask-install/homebrew-cask/30d.json",
+                    "Homebrew cask popularity uses cask install analytics")
+        expectEqual(HomebrewAnalytics.compactCount(999), "999", "Homebrew popularity under 1K stays plain")
+        expectEqual(HomebrewAnalytics.compactCount(1_250), "1.2K", "Homebrew popularity compacts thousands")
+        expectEqual(HomebrewAnalytics.compactCount(1_200_000), "1.2M", "Homebrew popularity compacts millions")
+        let shellSetupCommand = HomebrewCommandBuilder.shellConfigCommand(brewPath: brewPath,
+                                                                          homeDirectory: "/Users/test",
+                                                                          shellPath: "/bin/zsh")
+        expect(shellSetupCommand.contains("PROFILE=/Users/test/.zprofile"),
+               "Homebrew shell setup command targets the detected profile")
+        expect(shellSetupCommand.contains(#"grep -qxF "$LINE""#),
+               "Homebrew shell setup command avoids duplicate profile lines")
+        expectClose(HomebrewProgressParser.progressFraction(in: "######## 42.5%") ?? -1,
+                    0.425,
+                    "Homebrew progress parser reads percentage output")
+        expect(HomebrewProgressParser.phase(in: "==> Downloading https://example.com/file",
+                                            action: .install) == .downloading,
+               "Homebrew progress parser detects downloads")
+        expect(HomebrewProgressParser.phase(in: "==> Installing Cask google-chrome",
+                                            action: .install) == .installing,
+               "Homebrew progress parser detects installs")
+        expect(HomebrewProgressParser.phase(in: "==> Uninstalling Cask google-chrome",
+                                            action: .uninstall) == .uninstalling,
+               "Homebrew progress parser detects uninstalls")
+        expect(HomebrewProgressParser.activity(in: "\u{001B}[32m==> Moving App 'Chrome.app'\u{001B}[0m")
+               == "Moving App 'Chrome.app'",
+               "Homebrew progress parser cleans activity lines")
+        expect(HomebrewProgressParser.visibleError(from: "$ brew install x\nError: Cask failed")
+               == "Error: Cask failed",
+               "Homebrew progress parser hides command lines from visible errors")
+
+        let homebrewJSON = """
+        {
+          "formulae": [
+            {
+              "name": "jq",
+              "full_name": "jq",
+              "desc": "Command-line JSON processor",
+              "homepage": "https://jqlang.github.io/jq/",
+              "versions": { "stable": "1.8.1" },
+              "installed": [{ "version": "1.8.1" }]
+            }
+          ],
+          "casks": [
+            {
+              "token": "visual-studio-code",
+              "name": ["Visual Studio Code"],
+              "desc": "Code editor",
+              "homepage": "https://code.visualstudio.com/",
+              "version": "1.108.1",
+              "installed": "1.107.0"
+            }
+          ]
+        }
+        """
+        let homebrewPackages = (try? HomebrewParser.parseInfoJSON(Data(homebrewJSON.utf8))) ?? []
+        expect(homebrewPackages.count == 2, "Homebrew JSON parser keeps formulae and casks")
+        expect(homebrewPackages.first?.kind == .cask,
+               "Homebrew JSON parser sorts casks before formulae")
+        expect(homebrewPackages.first(where: { $0.name == "jq" })?.installedVersion == "1.8.1",
+               "Homebrew parser reads installed formula version")
+        expect(homebrewPackages.first(where: { $0.name == "visual-studio-code" })?.displayName == "Visual Studio Code",
+               "Homebrew parser reads cask display name")
+        let searchPackages = HomebrewParser.parseSearchOutput("jq\nbad token\nwget\nvisual-studio-code\n",
+                                                              kind: .formula,
+                                                              installed: homebrewPackages)
+        expect(searchPackages.map(\.name) == ["jq", "wget", "visual-studio-code"],
+               "Homebrew search parser keeps valid one-token results")
+        let analyticsJSON = """
+        {
+          "category": "formula_install_on_request",
+          "formulae": {
+            "jq": [
+              { "formula": "jq", "count": "21,557" },
+              { "formula": "jq --HEAD", "count": "30" }
+            ],
+            "wget": [
+              { "formula": "wget", "count": "42,001" }
+            ]
+          }
+        }
+        """
+        let popularity = (try? HomebrewAnalytics.parse(Data(analyticsJSON.utf8), kind: .formula)) ?? [:]
+        expect(popularity["jq"]?.count == 21_557,
+               "Homebrew analytics parser prefers the exact formula count")
+        expect(popularity["wget"]?.rank == 1,
+               "Homebrew analytics parser ranks by count")
+        let rankedPackages = HomebrewAnalytics.enrichAndSort(searchPackages, popularity: popularity)
+        expect(rankedPackages.map(\.name) == ["wget", "jq", "visual-studio-code"],
+               "Homebrew search results sort by popularity first")
+        expect(rankedPackages.first?.popularity?.compactCount == "42K",
+               "Homebrew search results keep compact popularity")
+
         // MARK: Localization format contracts
 
         let localizedStrings: [(AppLanguage, Strings)] = [
@@ -213,6 +540,16 @@ struct MetricsTests {
             expectFormat(strings.uninstallerFreedFormat, ["@"], "\(prefix) uninstaller freed format")
             expectFormat(strings.shelfSelectedFormat, ["d"], "\(prefix) shelf selection format")
             expectFormat(strings.powerAdapterMaxFormat, ["@"], "\(prefix) adapter max format")
+            expectFormat(strings.mixerInputErrorFormat, ["@"], "\(prefix) mixer input error format")
+            expectFormat(strings.homebrewConfirmInstallBodyFormat, ["@"], "\(prefix) Homebrew install format")
+            expectFormat(strings.homebrewConfirmUninstallBodyFormat, ["@"], "\(prefix) Homebrew uninstall format")
+            expectFormat(strings.homebrewPopularityFormat, ["@", "@"], "\(prefix) Homebrew popularity format")
+            expectFormat(strings.homebrewOperationInstallFormat, ["@"], "\(prefix) Homebrew operation install format")
+            expectFormat(strings.homebrewOperationUninstallFormat, ["@"], "\(prefix) Homebrew operation uninstall format")
+            expectFormat(strings.homebrewOperationInstalledFormat, ["@"], "\(prefix) Homebrew operation installed format")
+            expectFormat(strings.homebrewOperationUninstalledFormat, ["@"], "\(prefix) Homebrew operation uninstalled format")
+            expectFormat(strings.homebrewOperationFailedFormat, ["@"], "\(prefix) Homebrew operation failed format")
+            expectFormat(strings.homebrewOperationElapsedFormat, ["@"], "\(prefix) Homebrew operation elapsed format")
 
             let rendered = [
                 String(format: strings.cutMovedPluralFormat, 2),
@@ -220,6 +557,16 @@ struct MetricsTests {
                 String(format: strings.uninstallerFreedFormat, "1 MB"),
                 String(format: strings.shelfSelectedFormat, 2),
                 String(format: strings.powerAdapterMaxFormat, "30 W"),
+                String(format: strings.mixerInputErrorFormat, "OSStatus -1"),
+                String(format: strings.homebrewConfirmInstallBodyFormat, "jq"),
+                String(format: strings.homebrewConfirmUninstallBodyFormat, "jq"),
+                String(format: strings.homebrewPopularityFormat, "1,234", "30"),
+                String(format: strings.homebrewOperationInstallFormat, "jq"),
+                String(format: strings.homebrewOperationUninstallFormat, "jq"),
+                String(format: strings.homebrewOperationInstalledFormat, "jq"),
+                String(format: strings.homebrewOperationUninstalledFormat, "jq"),
+                String(format: strings.homebrewOperationFailedFormat, "jq"),
+                String(format: strings.homebrewOperationElapsedFormat, "10s"),
             ]
             for value in rendered {
                 expect(!value.isEmpty && !value.contains("%"), "\(prefix) renders format strings")

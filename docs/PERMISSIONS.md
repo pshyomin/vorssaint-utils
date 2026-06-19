@@ -6,12 +6,13 @@ You can review or change every grant in System Settings, under Privacy and Secur
 
 | Permission | Optional | Powers |
 |---|---|---|
-| Accessibility | Yes | Scroll direction, the app and window switcher, Finder cut and paste, quit on close |
-| Screen Recording | Yes | Window titles and thumbnails in the switcher |
+| Accessibility | Yes | Scroll direction, the app and window switcher, Dock Preview, Finder cut and paste, quit on close |
+| Screen Recording | Yes | Window titles and thumbnails in the switcher and Dock Preview |
+| System Audio Recording | Yes | Per app volume and output routing in the mixer |
 | Notifications | Yes | Keep awake, battery and update alerts |
 | Full Disk Access | Yes | A deeper uninstaller scan |
 | Administrator (one time) | Yes | Password free closed lid toggling |
-| Finder Automation | Yes | Finder cut and paste, and moving leftovers to the Trash |
+| Automation | Yes | Finder cut and paste, moving leftovers to the Trash and Homebrew Terminal handoff |
 
 ## Accessibility
 
@@ -21,6 +22,7 @@ You can review or change every grant in System Settings, under Privacy and Secur
 
 - **Scroll direction inverter**, which flips the mouse wheel.
 - **App and window switcher**, which captures the switcher hotkey and reads the window list.
+- **Dock Preview**, which reads Dock items and brings windows forward for a temporary peek.
 - **Finder cut and paste**, which steps in on ⌘X and ⌘V while Finder is in front.
 - **Quit on close**, which spots when an app's last window goes away.
 
@@ -32,11 +34,21 @@ You can review or change every grant in System Settings, under Privacy and Secur
 
 **Why it comes up.** On macOS, reading other windows' titles and grabbing their thumbnails counts as screen recording.
 
-**What uses it.** The window switcher, for live thumbnails and window titles.
+**What uses it.** The window switcher and Dock Preview, for live thumbnails and window titles.
 
-**If you say no.** The switcher still works and falls back to app icons instead of live thumbnails and titles. Nothing on your screen is ever written to disk or sent anywhere, since the access only feeds the switcher.
+**If you say no.** The switcher still works and falls back to app icons instead of live thumbnails and titles. Dock Preview stays unavailable. Nothing on your screen is ever written to disk or sent anywhere, since the access only feeds local previews.
 
 **Optional.** Yes.
+
+## System Audio Recording
+
+**Why it comes up.** macOS gates app audio taps behind the System Audio Recording permission.
+
+**What uses it.** The Volume Mixer, when you lower, boost or route an app to a specific output device.
+
+**If you say no.** Apps keep using normal system audio. The mixer cannot apply per app volume or output routing until the permission is granted.
+
+**Optional.** Yes. Audio is processed in memory for the mixer and is never recorded to disk or sent anywhere.
 
 ## Notifications
 
@@ -72,16 +84,17 @@ You can review or change every grant in System Settings, under Privacy and Secur
 
 **Optional.** Yes, and it is a one time choice. The rule is limited to `pmset disablesleep` and nothing else, and it goes away on its own when you uninstall Vorssaint or reset things from Settings under Advanced.
 
-## Finder Automation
+## Automation
 
-**Why it comes up.** A couple of features ask Finder to do something for you, and macOS guards that with an Automation prompt the first time it happens.
+**Why it comes up.** A few features ask Finder or Terminal to do something for you, and macOS guards that with an Automation prompt the first time it happens.
 
 **What uses it.**
 
 - **Finder cut and paste**, which reads the current Finder selection and the destination folder, then moves the files.
 - **Uninstaller**, which moves leftover files to the Trash.
+- **Homebrew manager**, which can open Terminal with the exact Homebrew install or setup command when the app should not collect a password itself.
 
-**If you say no.** Those Finder steps will not go through. You can switch Automation for Finder back on in System Settings, under Privacy and Security, Automation.
+**If you say no.** Those Finder or Terminal handoff steps will not go through. You can switch Automation back on in System Settings, under Privacy and Security, Automation.
 
 **Optional.** Yes.
 

@@ -223,6 +223,18 @@ struct Strings {
     let switcherNoWindows: String
     let switcherMergeTabs: String
     let switcherMergeTabsCaption: String
+    let dockPreviewName: String
+    let dockPreviewEnable: String
+    let dockPreviewEnableCaption: String
+    let dockPreviewActiveNow: String
+    let dockPreviewMagnificationBlocked: String
+    let dockPreviewDockUnavailable: String
+    let dockPreviewAutohideBeta: String
+    let dockPreviewIntroPeek: String
+    let dockPreviewIntroSettingsHint: String
+    let dockPreviewIntroLater: String
+    let dockPreviewIntroEnable: String
+    let dockPreviewIntroMagnificationAction: String
 
     // MARK: Feature — cut & paste in Finder
     let cutPasteName: String
@@ -310,6 +322,69 @@ struct Strings {
     let urlCleanerCopied: String
     let urlCleanerLocalNote: String
 
+    // MARK: Feature — Homebrew manager
+    let homebrewName: String
+    let homebrewEnableCaption: String
+    let homebrewMissingTitle: String
+    let homebrewMissingBody: String
+    let homebrewInstallHomebrew: String
+    let homebrewInstallHomebrewCaption: String
+    let homebrewInstallHomebrewOpened: String
+    let homebrewShellSetupTitle: String
+    let homebrewShellSetupBody: String
+    let homebrewShellSetupButton: String
+    let homebrewShellSetupOpened: String
+    let homebrewRefresh: String
+    let homebrewSearchPlaceholder: String
+    let homebrewKeyboardHint: String
+    let homebrewSearchButton: String
+    let homebrewSearchResults: String
+    let homebrewInstalled: String
+    let homebrewAll: String
+    let homebrewFormulas: String
+    let homebrewCasks: String
+    let homebrewNoPackages: String
+    let homebrewNoSelection: String
+    let homebrewDetailsTitle: String
+    let homebrewInstall: String
+    let homebrewUninstall: String
+    let homebrewOpenTerminal: String
+    let homebrewCancelOperation: String
+    let homebrewClearLog: String
+    let homebrewLogTitle: String
+    let homebrewVersion: String
+    let homebrewDescription: String
+    let homebrewHomepage: String
+    let homebrewPopularity: String
+    let homebrewPopularityFormat: String
+    let homebrewInstalledBadge: String
+    let homebrewNotInstalledBadge: String
+    let homebrewConfirmInstallTitle: String
+    let homebrewConfirmInstallBodyFormat: String
+    let homebrewConfirmUninstallTitle: String
+    let homebrewConfirmUninstallBodyFormat: String
+    let homebrewTerminalFallback: String
+    let homebrewLoading: String
+    let homebrewSearchEmpty: String
+    let homebrewOperationInstallFormat: String
+    let homebrewOperationUninstallFormat: String
+    let homebrewOperationInstalledFormat: String
+    let homebrewOperationUninstalledFormat: String
+    let homebrewOperationFailedFormat: String
+    let homebrewOperationCancelled: String
+    let homebrewOperationPreparing: String
+    let homebrewOperationDownloading: String
+    let homebrewOperationInstalling: String
+    let homebrewOperationUninstalling: String
+    let homebrewOperationFinalizing: String
+    let homebrewOperationRefreshing: String
+    let homebrewOperationTerminal: String
+    let homebrewOperationElapsedFormat: String
+    let homebrewOperationShowDetails: String
+    let homebrewOperationHideDetails: String
+    let homebrewOperationTechnicalLog: String
+    let homebrewOperationProgressUnknown: String
+
     // MARK: Feature — temporary shelf
     let shelfName: String
     let shelfEnable: String
@@ -341,6 +416,17 @@ struct Strings {
     let mixerUnavailable: String
     let mixerPermissionBody: String
     let mixerResetTooltip: String
+    let mixerOutputDefault: String
+    let mixerOutputCurrent: String
+    let mixerOutputUnavailable: String
+    let mixerOutputFallback: String
+    let mixerOutputTooltip: String
+    let mixerInputTitle: String
+    let mixerInputNoDevices: String
+    let mixerInputUnavailable: String
+    let mixerInputFallback: String
+    let mixerInputTooltip: String
+    let mixerInputErrorFormat: String
 
     // MARK: Settings — updates
     let updatesSection: String
@@ -434,6 +520,7 @@ struct Strings {
     let fanControlModeAutomatic: String
     let fanControlModeManual: String
     let betaBadge: String
+    let betaFeatureWarning: String
 
     // MARK: Panel — network
     let networkSection: String
@@ -654,6 +741,18 @@ extension Strings {
         switcherNoWindows: "Nenhuma janela aberta",
         switcherMergeTabs: "Mostrar uma entrada por app",
         switcherMergeTabsCaption: "Junta todas as janelas de um app em uma só entrada no alternador, em vez de uma por janela.",
+        dockPreviewName: "Dock Preview",
+        dockPreviewEnable: "Pré-visualizar janelas no Dock",
+        dockPreviewEnableCaption: "Passe o mouse em um app aberto no Dock para ver e espiar suas janelas.",
+        dockPreviewActiveNow: "Ativo no Dock",
+        dockPreviewMagnificationBlocked: "Desative a ampliação do Dock para usar.",
+        dockPreviewDockUnavailable: "Não foi possível ler os itens do Dock.",
+        dockPreviewAutohideBeta: "Beta. Você pode encontrar alguns bugs.",
+        dockPreviewIntroPeek: "Passe o mouse em uma miniatura para espiar. Clique para abrir a janela.",
+        dockPreviewIntroSettingsHint: "Você pode mudar isso depois em Ajustes › Switcher.",
+        dockPreviewIntroLater: "Agora não",
+        dockPreviewIntroEnable: "Ativar Dock Preview",
+        dockPreviewIntroMagnificationAction: "Desative a ampliação do Dock para ativar.",
 
         cutPasteName: "Recortar e colar",
         cutPasteEnable: "Recortar e colar arquivos no Finder",
@@ -737,6 +836,68 @@ extension Strings {
         urlCleanerCopied: "Copiado.",
         urlCleanerLocalNote: "Local. Sem rede.",
 
+        homebrewName: "Homebrew",
+        homebrewEnableCaption: "Pesquise, instale e remova fórmulas e casks.",
+        homebrewMissingTitle: "Homebrew não encontrado",
+        homebrewMissingBody: "O Vorssaint pode abrir o Terminal com o instalador oficial do Homebrew. O Terminal mostra os passos e pede sua senha se precisar.",
+        homebrewInstallHomebrew: "Instalar Homebrew",
+        homebrewInstallHomebrewCaption: "Depois que terminar no Terminal, volte aqui e clique em Atualizar.",
+        homebrewInstallHomebrewOpened: "Instalador aberto no Terminal.",
+        homebrewShellSetupTitle: "Finalizar configuração do Terminal",
+        homebrewShellSetupBody: "O Homebrew está instalado, mas o Terminal ainda pode não encontrar o comando brew. O Vorssaint pode abrir o Terminal com o comando de configuração.",
+        homebrewShellSetupButton: "Configurar Terminal",
+        homebrewShellSetupOpened: "Comando aberto no Terminal. Depois volte aqui e clique em Atualizar.",
+        homebrewRefresh: "Atualizar",
+        homebrewSearchPlaceholder: "Pesquisar pacotes",
+        homebrewKeyboardHint: "Espaço ou Enter fecham o painel do macOS. Use o botão de busca.",
+        homebrewSearchButton: "Pesquisar",
+        homebrewSearchResults: "Resultados",
+        homebrewInstalled: "Instalados",
+        homebrewAll: "Todos",
+        homebrewFormulas: "Fórmulas",
+        homebrewCasks: "Casks",
+        homebrewNoPackages: "Nenhum pacote encontrado",
+        homebrewNoSelection: "Selecione um pacote instalado ou pesquise um novo.",
+        homebrewDetailsTitle: "Detalhes do pacote",
+        homebrewInstall: "Instalar",
+        homebrewUninstall: "Desinstalar",
+        homebrewOpenTerminal: "Abrir Terminal",
+        homebrewCancelOperation: "Cancelar",
+        homebrewClearLog: "Limpar log",
+        homebrewLogTitle: "Log",
+        homebrewVersion: "Versão",
+        homebrewDescription: "Tipo",
+        homebrewHomepage: "Abrir site",
+        homebrewPopularity: "Popularidade",
+        homebrewPopularityFormat: "%@ instalações em %@ dias",
+        homebrewInstalledBadge: "Instalado",
+        homebrewNotInstalledBadge: "Não instalado",
+        homebrewConfirmInstallTitle: "Instalar pelo Homebrew?",
+        homebrewConfirmInstallBodyFormat: "O Homebrew vai baixar e instalar %@. Dependências também podem ser instaladas.",
+        homebrewConfirmUninstallTitle: "Desinstalar pelo Homebrew?",
+        homebrewConfirmUninstallBodyFormat: "O Homebrew vai desinstalar %@. Arquivos de configuração podem permanecer no sistema.",
+        homebrewTerminalFallback: "Esta operação precisa do Terminal para pedir a senha de administrador. O Vorssaint não captura senhas.",
+        homebrewLoading: "Carregando…",
+        homebrewSearchEmpty: "Nenhum resultado",
+        homebrewOperationInstallFormat: "Instalando %@",
+        homebrewOperationUninstallFormat: "Desinstalando %@",
+        homebrewOperationInstalledFormat: "%@ instalado.",
+        homebrewOperationUninstalledFormat: "%@ desinstalado.",
+        homebrewOperationFailedFormat: "Não foi possível concluir %@.",
+        homebrewOperationCancelled: "Operação cancelada.",
+        homebrewOperationPreparing: "Preparando...",
+        homebrewOperationDownloading: "Baixando arquivos...",
+        homebrewOperationInstalling: "Instalando arquivos...",
+        homebrewOperationUninstalling: "Removendo arquivos...",
+        homebrewOperationFinalizing: "Finalizando...",
+        homebrewOperationRefreshing: "Atualizando lista...",
+        homebrewOperationTerminal: "Continue no Terminal.",
+        homebrewOperationElapsedFormat: "%@ decorridos",
+        homebrewOperationShowDetails: "Mostrar detalhes",
+        homebrewOperationHideDetails: "Ocultar detalhes",
+        homebrewOperationTechnicalLog: "Detalhes técnicos",
+        homebrewOperationProgressUnknown: "O Homebrew ainda não informou uma porcentagem.",
+
         shelfName: "Área temporária",
         shelfEnable: "Área temporária para arrastar arquivos",
         shelfEnableCaption: "Um espaço flutuante para juntar arquivos, imagens e textos e arrastá-los depois para qualquer app.",
@@ -765,6 +926,17 @@ extension Strings {
         mixerUnavailable: "Disponível a partir do macOS 14.4",
         mixerPermissionBody: "Para ajustar o volume por app, permita “Gravação de Tela e Áudio do Sistema” nos Ajustes do Sistema. O áudio nunca é gravado.",
         mixerResetTooltip: "Voltar para 100%",
+        mixerOutputDefault: "Padrão",
+        mixerOutputCurrent: "atual",
+        mixerOutputUnavailable: "Saída indisponível",
+        mixerOutputFallback: "Usando o padrão até esse dispositivo voltar.",
+        mixerOutputTooltip: "Escolher saída",
+        mixerInputTitle: "Microfone",
+        mixerInputNoDevices: "Nenhum microfone encontrado",
+        mixerInputUnavailable: "Microfone indisponível",
+        mixerInputFallback: "Usando o padrão até esse microfone voltar.",
+        mixerInputTooltip: "Escolher microfone",
+        mixerInputErrorFormat: "Não foi possível trocar: %@",
 
         updatesSection: "Atualizações",
         autoCheckToggle: "Procurar atualizações automaticamente",
@@ -853,6 +1025,7 @@ extension Strings {
         fanControlModeAutomatic: "Automático",
         fanControlModeManual: "Manual",
         betaBadge: "BETA",
+        betaFeatureWarning: "Beta. Você pode encontrar alguns bugs.",
 
         networkSection: "Rede",
         networkDownload: "Download",
@@ -905,7 +1078,7 @@ extension Strings {
         monitorItemNetTest: "Teste de velocidade",
         monitorPanelConfigHint: "Abra um bloco para escolher o que ele mostra.",
         monitorOrderSection: "Ordem das seções",
-        monitorOrderHint: "Arraste para reordenar as seções do painel. Use o chevron de cada seção no painel para recolher.",
+        monitorOrderHint: "Arraste para reordenar as seções do painel e use o olho para mostrar ou ocultar cada uma.",
         obStepPanelTitle: "O que aparece no painel",
         obStepPanelBody: "Abra cada bloco e escolha exatamente o que mostrar quando você clica no ícone.",
         obStepPanelNavigationTitle: "Painel por seções",
@@ -1067,6 +1240,18 @@ extension Strings {
         switcherNoWindows: "No open windows",
         switcherMergeTabs: "Show one entry per app",
         switcherMergeTabsCaption: "Collapses all of an app's windows into one entry in the switcher, instead of one entry per window.",
+        dockPreviewName: "Dock Preview",
+        dockPreviewEnable: "Preview windows from the Dock",
+        dockPreviewEnableCaption: "Hover over an open app in the Dock to preview and peek at its windows.",
+        dockPreviewActiveNow: "Active in the Dock",
+        dockPreviewMagnificationBlocked: "Turn off Dock magnification to use this.",
+        dockPreviewDockUnavailable: "Could not read Dock items.",
+        dockPreviewAutohideBeta: "Beta. You may run into some bugs.",
+        dockPreviewIntroPeek: "Hover over a thumbnail to peek. Click to open the window.",
+        dockPreviewIntroSettingsHint: "You can change this later in Settings › Switcher.",
+        dockPreviewIntroLater: "Not now",
+        dockPreviewIntroEnable: "Enable Dock Preview",
+        dockPreviewIntroMagnificationAction: "Turn off Dock magnification to enable.",
 
         cutPasteName: "Cut & paste",
         cutPasteEnable: "Cut & paste files in Finder",
@@ -1150,6 +1335,68 @@ extension Strings {
         urlCleanerCopied: "Copied.",
         urlCleanerLocalNote: "Local. No network.",
 
+        homebrewName: "Homebrew",
+        homebrewEnableCaption: "Search, install and remove formulae and casks.",
+        homebrewMissingTitle: "Homebrew not found",
+        homebrewMissingBody: "Vorssaint can open Terminal with the official Homebrew installer. Terminal shows the steps and asks for your password if needed.",
+        homebrewInstallHomebrew: "Install Homebrew",
+        homebrewInstallHomebrewCaption: "When Terminal finishes, come back here and click Refresh.",
+        homebrewInstallHomebrewOpened: "Installer opened in Terminal.",
+        homebrewShellSetupTitle: "Finish Terminal setup",
+        homebrewShellSetupBody: "Homebrew is installed, but Terminal may not find the brew command yet. Vorssaint can open Terminal with the setup command.",
+        homebrewShellSetupButton: "Set up Terminal",
+        homebrewShellSetupOpened: "Command opened in Terminal. Then come back here and click Refresh.",
+        homebrewRefresh: "Refresh",
+        homebrewSearchPlaceholder: "Search packages",
+        homebrewKeyboardHint: "Space or Return closes the macOS panel. Use the search button.",
+        homebrewSearchButton: "Search",
+        homebrewSearchResults: "Results",
+        homebrewInstalled: "Installed",
+        homebrewAll: "All",
+        homebrewFormulas: "Formulae",
+        homebrewCasks: "Casks",
+        homebrewNoPackages: "No packages found",
+        homebrewNoSelection: "Select an installed package or search for a new one.",
+        homebrewDetailsTitle: "Package details",
+        homebrewInstall: "Install",
+        homebrewUninstall: "Uninstall",
+        homebrewOpenTerminal: "Open Terminal",
+        homebrewCancelOperation: "Cancel",
+        homebrewClearLog: "Clear log",
+        homebrewLogTitle: "Log",
+        homebrewVersion: "Version",
+        homebrewDescription: "Type",
+        homebrewHomepage: "Open website",
+        homebrewPopularity: "Popularity",
+        homebrewPopularityFormat: "%@ installs in %@ days",
+        homebrewInstalledBadge: "Installed",
+        homebrewNotInstalledBadge: "Not installed",
+        homebrewConfirmInstallTitle: "Install with Homebrew?",
+        homebrewConfirmInstallBodyFormat: "Homebrew will download and install %@. Dependencies may also be installed.",
+        homebrewConfirmUninstallTitle: "Uninstall with Homebrew?",
+        homebrewConfirmUninstallBodyFormat: "Homebrew will uninstall %@. Configuration files may remain on the system.",
+        homebrewTerminalFallback: "This operation needs Terminal to ask for the administrator password. Vorssaint does not capture passwords.",
+        homebrewLoading: "Loading…",
+        homebrewSearchEmpty: "No results",
+        homebrewOperationInstallFormat: "Installing %@",
+        homebrewOperationUninstallFormat: "Uninstalling %@",
+        homebrewOperationInstalledFormat: "%@ installed.",
+        homebrewOperationUninstalledFormat: "%@ uninstalled.",
+        homebrewOperationFailedFormat: "Could not finish %@.",
+        homebrewOperationCancelled: "Operation cancelled.",
+        homebrewOperationPreparing: "Preparing...",
+        homebrewOperationDownloading: "Downloading files...",
+        homebrewOperationInstalling: "Installing files...",
+        homebrewOperationUninstalling: "Removing files...",
+        homebrewOperationFinalizing: "Finishing...",
+        homebrewOperationRefreshing: "Refreshing list...",
+        homebrewOperationTerminal: "Continue in Terminal.",
+        homebrewOperationElapsedFormat: "%@ elapsed",
+        homebrewOperationShowDetails: "Show details",
+        homebrewOperationHideDetails: "Hide details",
+        homebrewOperationTechnicalLog: "Technical details",
+        homebrewOperationProgressUnknown: "Homebrew has not reported a percentage yet.",
+
         shelfName: "Shelf",
         shelfEnable: "Temporary area for dragging files",
         shelfEnableCaption: "A floating spot to gather files, images and text, then drag them anywhere later.",
@@ -1178,6 +1425,17 @@ extension Strings {
         mixerUnavailable: "Available on macOS 14.4 and later",
         mixerPermissionBody: "To adjust per-app volume, allow “Screen & System Audio Recording” in System Settings. Audio is never recorded.",
         mixerResetTooltip: "Reset to 100%",
+        mixerOutputDefault: "Default",
+        mixerOutputCurrent: "current",
+        mixerOutputUnavailable: "Output unavailable",
+        mixerOutputFallback: "Using default until this device returns.",
+        mixerOutputTooltip: "Choose output",
+        mixerInputTitle: "Microphone",
+        mixerInputNoDevices: "No microphones found",
+        mixerInputUnavailable: "Microphone unavailable",
+        mixerInputFallback: "Using default until this microphone returns.",
+        mixerInputTooltip: "Choose microphone",
+        mixerInputErrorFormat: "Could not switch: %@",
 
         updatesSection: "Updates",
         autoCheckToggle: "Check for updates automatically",
@@ -1266,6 +1524,7 @@ extension Strings {
         fanControlModeAutomatic: "Automatic",
         fanControlModeManual: "Manual",
         betaBadge: "BETA",
+        betaFeatureWarning: "Beta. You may run into some bugs.",
 
         networkSection: "Network",
         networkDownload: "Download",
@@ -1318,7 +1577,7 @@ extension Strings {
         monitorItemNetTest: "Speed test",
         monitorPanelConfigHint: "Open a block to choose what it shows.",
         monitorOrderSection: "Section order",
-        monitorOrderHint: "Drag to reorder the panel sections. Use each section's chevron in the panel to collapse it.",
+        monitorOrderHint: "Drag to reorder the panel sections and use the eye to show or hide each one.",
         obStepPanelTitle: "What's in the panel",
         obStepPanelBody: "Open each block and pick exactly what shows when you click the icon.",
         obStepPanelNavigationTitle: "Section-based panel",

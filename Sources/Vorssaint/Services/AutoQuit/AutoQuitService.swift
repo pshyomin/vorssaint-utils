@@ -179,13 +179,19 @@ final class AutoQuitService: ObservableObject {
         guard running, hadWindows[pid] == true,
               let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated else { return }
         if let bundleID = app.bundleIdentifier, exceptions.contains(bundleID) { return }
-        let hiddenByCloseRequest = app.isHidden && hasRecentCloseButtonRequest(pid: pid)
+        let recentClose = hasRecentCloseButtonRequest(pid: pid)
+        let hiddenByCloseRequest = app.isHidden && recentClose
         if app.isHidden && !hiddenByCloseRequest { return }
 
         let appElement = AXUIElementCreateApplication(pid)
+        // After an explicit close-button click, ignore off-screen titled windows
+        // for ALL apps, not just hidden ones. Chromium/Electron apps especially
+        // keep a titled helper/background window parked off-screen (or on another
+        // Space) after the visible window closes; counting it kept the app alive
+        // forever. Clicking the close button is the clear "I'm done here" signal.
         guard !hasUserFacingWindow(pid: pid,
                                    appElement: appElement,
-                                   includeOffscreenTitled: !hiddenByCloseRequest) else { return }
+                                   includeOffscreenTitled: !recentClose) else { return }
 
         // Zero windows can be a transient state, most notably when leaving full
         // screen with the green button: the full-screen window is destroyed a
@@ -199,11 +205,12 @@ final class AutoQuitService: ObservableObject {
             return
         }
 
-        let stillHiddenByCloseRequest = app.isHidden && hasRecentCloseButtonRequest(pid: pid)
+        let stillRecentClose = hasRecentCloseButtonRequest(pid: pid)
+        let stillHiddenByCloseRequest = app.isHidden && stillRecentClose
         if app.isHidden && !stillHiddenByCloseRequest { return }
         guard !hasUserFacingWindow(pid: pid,
                                    appElement: appElement,
-                                   includeOffscreenTitled: !stillHiddenByCloseRequest) else { return }
+                                   includeOffscreenTitled: !stillRecentClose) else { return }
 
         hadWindows[pid] = false
         recentCloseButtonRequests[pid] = nil
@@ -300,6 +307,9 @@ final class AutoQuitService: ObservableObject {
         }
         if let hasWindowServerWindow = hasWindowServerUserWindow(pid: pid,
                                                                  includeOffscreenTitled: includeOffscreenTitled) {
+            if !includeOffscreenTitled {
+                return hasWindowServerWindow
+            }
             return hasWindowServerWindow
         }
         return !axWindows.isEmpty
@@ -388,6 +398,7 @@ final class AutoQuitService: ObservableObject {
 
     private func markCloseButtonRequest(pid: pid_t) {
         recentCloseButtonRequests[pid] = Date()
+        scheduleCloseRequestChecks(pid: pid)
     }
 
     private func hasRecentCloseButtonRequest(pid: pid_t) -> Bool {
@@ -399,23 +410,32 @@ final class AutoQuitService: ObservableObject {
         return false
     }
 
+    private func scheduleCloseRequestChecks(pid: pid_t) {
+        for delay in [0.35, 1.0] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.checkWindows(pid: pid)
+            }
+        }
+    }
+
     private func closeButtonPID(at point: CGPoint, candidate: TrafficLightCandidate) -> pid_t? {
+        guard candidate.pid != getpid(), observers[candidate.pid] != nil else { return nil }
         guard let element = elementAt(point: point),
-              let window = Self.topLevelWindow(from: element),
-              Self.isStandardWindow(window),
-              let closeButton = Self.windowAttribute(window, kAXCloseButtonAttribute as String),
-              Self.boolAttribute(closeButton, kAXEnabledAttribute as String, default: true),
-              let buttonFrame = Self.frame(of: closeButton),
-              buttonFrame.insetBy(dx: -4, dy: -4).contains(point)
-        else { return nil }
+              let window = Self.topLevelWindow(from: element)
+        else { return candidate.pid }
 
         var pid: pid_t = 0
         AXUIElementGetPid(window, &pid)
-        guard pid == candidate.pid,
-              pid != 0,
-              pid != getpid(),
-              observers[pid] != nil else { return nil }
-        return pid
+        if pid == 0 { return candidate.pid }
+        guard pid == candidate.pid else { return nil }
+
+        guard Self.isStandardWindow(window),
+              let closeButton = Self.windowAttribute(window, kAXCloseButtonAttribute as String),
+              Self.boolAttribute(closeButton, kAXEnabledAttribute as String, default: true),
+              let buttonFrame = Self.frame(of: closeButton)
+        else { return candidate.pid }
+
+        return buttonFrame.insetBy(dx: -4, dy: -4).contains(point) ? pid : nil
     }
 
     private func elementAt(point: CGPoint) -> AXUIElement? {

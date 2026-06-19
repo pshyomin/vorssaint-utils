@@ -11,12 +11,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     private var popoverClosedAt = Date.distantPast
     private var popoverDismissMonitor: Any?
     private var popoverLocalDismissMonitor: Any?
+    private var popoverKeyboardMonitor: Any?
     private var popoverIsClosing = false
     private var popoverCloseCompletions: [() -> Void] = []
     private var isTerminating = false
     private var cancellables = Set<AnyCancellable>()
     private var settingsWindow: NSWindow?
     private var onboardingWindow: NSWindow?
+    private var dockPreviewIntroWindow: NSWindow?
     private let popoverOpenDuration: TimeInterval = 0.18
     private let popoverCloseDuration: TimeInterval = 0.14
 
@@ -50,11 +52,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         AppActivationTracker.shared.start()
         ScrollInverter.shared.syncWithPreferences()
         AppSwitcher.shared.syncWithPreferences()
+        DockPreviewService.shared.syncWithPreferences()
         FinderCutPaste.shared.syncWithPreferences()
         AutoQuitService.shared.syncWithPreferences()
         ShelfService.shared.syncWithPreferences()
         URLCleanerService.shared.syncWithPreferences()
         WindowMaximizer.shared.syncWithPreferences()
+        AudioInputDeviceManager.shared.start()
         AppVolumeMixer.shared.start()
         UpdateService.shared.startAutomaticChecks()
         NotificationCenter.default.addObserver(self, selector: #selector(appBecameActive),
@@ -68,9 +72,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             .sink { _ in
                 ScrollInverter.shared.syncWithPreferences()
                 AppSwitcher.shared.syncWithPreferences()
+                DockPreviewService.shared.syncWithPreferences()
                 FinderCutPaste.shared.syncWithPreferences()
                 AutoQuitService.shared.syncWithPreferences()
                 WindowMaximizer.shared.syncWithPreferences()
+            }
+            .store(in: &cancellables)
+
+        Permissions.shared.$screenRecording
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { _ in
+                DockPreviewService.shared.syncWithPreferences()
             }
             .store(in: &cancellables)
 
@@ -87,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         } else {
             defaults.set(OnboardingInfo.currentFeatureSet, forKey: DefaultsKey.featuresOnboardingVersion)
             defaults.set(AppInfo.version, forKey: DefaultsKey.lastUpdateIntroVersion)
+            showDockPreviewIntroIfNeeded()
         }
     }
 
@@ -94,6 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         isTerminating = true
         URLCleanerService.shared.stop()
         WindowMaximizer.shared.stop()
+        DockPreviewService.shared.stop()
         AppVolumeMixer.shared.stopAll()
         KeepAwakeManager.shared.deactivate(reason: .quit)
     }
@@ -221,6 +236,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             }
             return event
         }
+
+        popoverKeyboardMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            return self.handlePopoverKeyDown(event)
+        }
     }
 
     private func removePopoverDismissMonitor() {
@@ -232,6 +252,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             NSEvent.removeMonitor(monitor)
             popoverLocalDismissMonitor = nil
         }
+        if let monitor = popoverKeyboardMonitor {
+            NSEvent.removeMonitor(monitor)
+            popoverKeyboardMonitor = nil
+        }
     }
 
     private func shouldDismissPopover(forLocalEvent event: NSEvent) -> Bool {
@@ -242,6 +266,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             return false
         }
         return settingsFrame.intersects(popoverFrame)
+    }
+
+    private func handlePopoverKeyDown(_ event: NSEvent) -> NSEvent? {
+        guard popover.isShown,
+              PanelInteractionState.shared.keepsPopoverOpen,
+              isPlainPopoverHoldKey(event),
+              let window = popover.contentViewController?.view.window else {
+            return event
+        }
+
+        // Text controls inside the popover, especially the Homebrew search
+        // field, need Space/Return delivered through AppKit's normal field
+        // editor path so delegates and target/actions can submit correctly.
+        if isTextEditingActive(in: window) {
+            return event
+        }
+
+        if NSApp.keyWindow === window || event.window === window {
+            window.firstResponder?.keyDown(with: event)
+            return nil
+        }
+        return event
+    }
+
+    private func isPlainPopoverHoldKey(_ event: NSEvent) -> Bool {
+        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+        guard event.modifierFlags.intersection(blockedModifiers).isEmpty else { return false }
+        return event.keyCode == 49 || event.keyCode == 36 || event.keyCode == 76
+    }
+
+    private func isTextEditingActive(in window: NSWindow) -> Bool {
+        guard let responder = window.firstResponder else { return false }
+        if responder is NSTextView || responder is NSTextField {
+            return true
+        }
+        guard let fieldEditor = window.fieldEditor(false, for: nil) else { return false }
+        return responder === fieldEditor
     }
 
     @objc private func appResignedActive() {
@@ -316,7 +377,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             runPopoverCloseCompletions()
             return
         }
-        popoverIsClosing = false
+        popoverIsClosing = true
         popover.performClose(nil)
         runPopoverCloseCompletions()
     }
@@ -332,6 +393,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     func popoverWillShow(_ notification: Notification) {
         SystemMonitor.shared.panelDidAppear()
         UpdateService.shared.checkIfStale()
+    }
+
+    func popoverShouldClose(_ popover: NSPopover) -> Bool {
+        popoverIsClosing || !PanelInteractionState.shared.keepsPopoverOpen
     }
 
     func popoverDidClose(_ notification: Notification) {
@@ -556,6 +621,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     func openSettingsWindow() {
         // Intentionally does NOT close the panel: the panel uses applicationDefined
         // dismissal, so it stays open beside Settings for a live preview.
+        let createdWindow = settingsWindow == nil
         if settingsWindow == nil {
             let host = NSHostingController(rootView: SettingsView())
             let window = NSWindow(contentViewController: host)
@@ -566,42 +632,76 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             window.hidesOnDeactivate = false
             window.canHide = false
             window.delegate = self
-            centerSettingsWindow(window)
             settingsWindow = window
         }
         settingsWindow?.title = L10n.shared.s.settingsTitle
+        if let window = settingsWindow {
+            positionSettingsWindow(window, force: createdWindow)
+        }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let window = self.settingsWindow else { return }
+            self.positionSettingsWindow(window, force: false)
+        }
     }
 
-    private func centerSettingsWindow(_ window: NSWindow) {
+    private func positionSettingsWindow(_ window: NSWindow, force: Bool) {
         window.contentView?.layoutSubtreeIfNeeded()
-        let screen = popover.contentViewController?.view.window?.screen ?? NSScreen.withMouse
+        let popoverWindow = popover.contentViewController?.view.window
+        let screen = popoverWindow?.screen ?? window.screen ?? NSScreen.withMouse
         let visible = screen.visibleFrame
         let margin: CGFloat = 40
         let availableWidth = max(1, visible.width - margin)
         let availableHeight = max(1, visible.height - margin)
         let width = min(max(window.frame.width, 360), availableWidth)
         let height = min(max(window.frame.height, 320), availableHeight)
-        var frame = NSRect(x: visible.midX - width / 2,
-                           y: visible.midY - height / 2,
-                           width: width,
-                           height: height)
+        var frame = force
+            ? NSRect(x: visible.midX - width / 2,
+                     y: visible.midY - height / 2,
+                     width: width,
+                     height: height)
+            : NSRect(x: window.frame.minX,
+                     y: window.frame.minY,
+                     width: width,
+                     height: height)
 
-        if let popoverFrame = popover.contentViewController?.view.window?.frame,
+        if let popoverFrame = popoverWindow?.frame,
+           visible.intersects(popoverFrame),
            frame.intersects(popoverFrame) {
-            let gap: CGFloat = 16
-            let leftOfPopover = popoverFrame.minX - gap - width
-            if leftOfPopover >= visible.minX {
-                frame.origin.x = leftOfPopover
-            } else {
-                let belowPopover = popoverFrame.minY - gap - height
-                if belowPopover >= visible.minY {
-                    frame.origin.y = belowPopover
-                }
-            }
+            frame = settingsFrame(frame, avoiding: popoverFrame, in: visible)
+        } else if force {
+            frame.origin.x = min(max(frame.origin.x, visible.minX + margin / 2), visible.maxX - width - margin / 2)
+            frame.origin.y = min(max(frame.origin.y, visible.minY + margin / 2), visible.maxY - height - margin / 2)
         }
         window.setFrame(frame.integral, display: false)
+    }
+
+    private func settingsFrame(_ frame: NSRect, avoiding popoverFrame: NSRect, in visible: NSRect) -> NSRect {
+        let gap: CGFloat = 28
+        let margin: CGFloat = 20
+        var adjusted = frame
+
+        let leftX = popoverFrame.minX - gap - frame.width
+        let rightX = popoverFrame.maxX + gap
+        if popoverFrame.midX >= visible.midX, leftX >= visible.minX + margin {
+            adjusted.origin.x = min(frame.origin.x, leftX)
+        } else if popoverFrame.midX < visible.midX,
+                  rightX + frame.width <= visible.maxX - margin {
+            adjusted.origin.x = max(frame.origin.x, rightX)
+        } else {
+            let belowY = popoverFrame.minY - gap - frame.height
+            let aboveY = popoverFrame.maxY + gap
+            if belowY >= visible.minY + margin {
+                adjusted.origin.y = min(frame.origin.y, belowY)
+            } else if aboveY + frame.height <= visible.maxY - margin {
+                adjusted.origin.y = max(frame.origin.y, aboveY)
+            }
+        }
+
+        adjusted.origin.x = min(max(adjusted.origin.x, visible.minX + margin), visible.maxX - frame.width - margin)
+        adjusted.origin.y = min(max(adjusted.origin.y, visible.minY + margin), visible.maxY - frame.height - margin)
+        return adjusted
     }
 
     /// Rebuilds the menu bar item so the icon reappears when the OS has dropped it
@@ -653,6 +753,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         }
     }
 
+    private func showDockPreviewIntroIfNeeded() {
+        guard AppInfo.version == DockPreviewIntroInfo.releaseVersion else { return }
+        let defaults = UserDefaults.standard
+        guard defaults.string(forKey: DefaultsKey.dockPreviewIntroVersion) != AppInfo.version else { return }
+        showDockPreviewIntro()
+    }
+
+    private func showDockPreviewIntro() {
+        closePopover()
+        if let window = dockPreviewIntroWindow {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+        let host = NSHostingController(rootView: DockPreviewIntroView(
+            onDismiss: { [weak self] in
+                self?.markDockPreviewIntroSeen()
+                self?.dockPreviewIntroWindow?.close()
+            },
+            onEnable: { [weak self] in
+                DockPreviewService.shared.syncWithPreferences()
+                guard !DockPreviewService.shared.dockMagnification else { return }
+                UserDefaults.standard.set(true, forKey: DefaultsKey.dockPreviewEnabled)
+                DockPreviewService.shared.syncWithPreferences()
+                self?.markDockPreviewIntroSeen()
+                self?.dockPreviewIntroWindow?.close()
+            }
+        ))
+        host.sizingOptions = .preferredContentSize
+        let window = NSWindow(contentViewController: host)
+        window.title = L10n.shared.s.dockPreviewName
+        window.styleMask = [.titled, .closable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.isReleasedWhenClosed = false
+        window.isRestorable = false
+        window.isMovableByWindowBackground = true
+        window.delegate = self
+        centerDockPreviewIntroWindow(window)
+        dockPreviewIntroWindow = window
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let self, let window, window === self.dockPreviewIntroWindow else { return }
+            self.centerDockPreviewIntroWindow(window)
+        }
+    }
+
     private func centerOnboardingWindow(_ window: NSWindow) {
         window.contentView?.layoutSubtreeIfNeeded()
         let screen = window.screen ?? popover.contentViewController?.view.window?.screen ?? NSScreen.withMouse
@@ -661,6 +809,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         let availableWidth = max(1, visible.width - margin)
         let availableHeight = max(1, visible.height - margin)
         let width = min(max(window.frame.width, 540), availableWidth)
+        let height = min(max(window.frame.height, 600), availableHeight)
+        let frame = NSRect(x: visible.midX - width / 2,
+                           y: visible.midY - height / 2,
+                           width: width,
+                           height: height)
+        window.setFrame(frame.integral, display: false)
+    }
+
+    private func centerDockPreviewIntroWindow(_ window: NSWindow) {
+        window.contentView?.layoutSubtreeIfNeeded()
+        let screen = window.screen ?? popover.contentViewController?.view.window?.screen ?? NSScreen.withMouse
+        let visible = screen.visibleFrame
+        let margin: CGFloat = 40
+        let availableWidth = max(1, visible.width - margin)
+        let availableHeight = max(1, visible.height - margin)
+        let width = min(max(window.frame.width, 660), availableWidth)
         let height = min(max(window.frame.height, 600), availableHeight)
         let frame = NSRect(x: visible.midX - width / 2,
                            y: visible.midY - height / 2,
@@ -682,6 +846,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             guard !isTerminating else { return }
             markOnboardingComplete()
         }
+        if window === dockPreviewIntroWindow {
+            dockPreviewIntroWindow = nil
+            guard !isTerminating else { return }
+            markDockPreviewIntroSeen()
+        }
     }
 
     /// Marks both the first run and this version's feature tour as seen, so
@@ -690,5 +859,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         UserDefaults.standard.set(true, forKey: DefaultsKey.hasOnboarded)
         UserDefaults.standard.set(OnboardingInfo.currentFeatureSet, forKey: DefaultsKey.featuresOnboardingVersion)
         UserDefaults.standard.set(AppInfo.version, forKey: DefaultsKey.lastUpdateIntroVersion)
+        markDockPreviewIntroSeenIfCurrentUpdate()
+    }
+
+    private func markDockPreviewIntroSeenIfCurrentUpdate() {
+        guard AppInfo.version == DockPreviewIntroInfo.releaseVersion else { return }
+        markDockPreviewIntroSeen()
+    }
+
+    private func markDockPreviewIntroSeen() {
+        UserDefaults.standard.set(AppInfo.version, forKey: DefaultsKey.dockPreviewIntroVersion)
     }
 }

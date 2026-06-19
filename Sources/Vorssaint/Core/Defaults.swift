@@ -10,6 +10,7 @@ enum DefaultsKey {
     static let onboardingStep = "onboardingStep"          // resume point if onboarding is interrupted
     static let featuresOnboardingVersion = "featuresOnboardingVersion" // last feature-tour marker handled
     static let lastUpdateIntroVersion = "lastUpdateIntroVersion"
+    static let dockPreviewIntroVersion = "dockPreviewIntroVersion"
     static let defaultDuration = "defaultDurationMinutes" // 0 = indefinite
     static let batteryLimit = "batteryLimitPercent"       // 0 = never
     static let hotkeyEnabled = "hotkeyEnabled"
@@ -19,8 +20,11 @@ enum DefaultsKey {
     static let scrollInverterEnabled = "scrollInverterEnabled"
     static let switcherEnabled = "switcherEnabled"
     static let switcherMergeTabs = "switcherMergeTabs"     // show one switcher entry per app (collapse all of an app's windows)
+    static let dockPreviewEnabled = "dockPreviewEnabled"
     static let autoCheckUpdates = "autoCheckUpdates"
     static let appVolumes = "appVolumes"                  // [bundle id: 0...2]
+    static let appOutputDevices = "appOutputDevices"      // [bundle id: audio device UID]
+    static let preferredInputDevice = "preferredInputDevice" // audio input device UID
     static let finderCutPasteEnabled = "finderCutPasteEnabled"
     static let autoQuitEnabled = "autoQuitEnabled"
     static let autoQuitExceptions = "autoQuitExceptions"  // [bundle id] kept running
@@ -31,12 +35,18 @@ enum DefaultsKey {
     static let panelUtilityCleaning = "panelUtilityCleaning"
     static let panelUtilityURLCleaner = "panelUtilityURLCleaner"
     static let panelUtilityUninstaller = "panelUtilityUninstaller"
+    static let panelUtilityHomebrew = "panelUtilityHomebrew"
     static let panelControlMouseScroll = "panelControlMouseScroll"
     static let panelControlSwitcher = "panelControlSwitcher"
+    static let panelControlDockPreview = "panelControlDockPreview"
     static let panelControlCutPaste = "panelControlCutPaste"
     static let panelControlAutoQuit = "panelControlAutoQuit"
     static let panelControlShelf = "panelControlShelf"
     static let panelControlWindowMaximize = "panelControlWindowMaximize"
+    // Show/hide whole panel sections that have no monitorShow* key of their own.
+    static let panelShowKeepAwake = "panelShowKeepAwake"
+    static let panelShowUtilities = "panelShowUtilities"
+    static let panelShowControls = "panelShowControls"
 
     // System monitor — live metrics shown next to the menu bar icon (opt-in).
     static let menuBarCPU = "menuBarCPU"
@@ -80,6 +90,11 @@ enum DefaultsKey {
     // collapsed, both comma-joined section ids (see PanelSectionID). Absent keys
     // mean the canonical order and nothing collapsed, so no defaults registration.
     static let panelSectionOrder = "panelSectionOrder"
+    static let panelUtilityOrder = "panelUtilityOrder"
+    static let panelControlOrder = "panelControlOrder"
+    static let panelSystemOrder = "panelSystemOrder"
+    static let panelNetworkOrder = "panelNetworkOrder"
+    static let panelPowerOrder = "panelPowerOrder"
     static let panelNavigationEnabled = "panelNavigationEnabled"
     static let panelCollapsedSections = "panelCollapsedSections"
     static let panelCollapsedResetVersion = "panelCollapsedResetVersion"
@@ -94,6 +109,10 @@ enum OnboardingInfo {
     // 3: app languages and support settings.
     // 4: navigable menu panel sections.
     static let currentFeatureSet = 4
+}
+
+enum DockPreviewIntroInfo {
+    static let releaseVersion = "3.0.4"
 }
 
 enum Defaults {
@@ -115,6 +134,7 @@ enum Defaults {
         DefaultsKey.scrollInverterEnabled: false,
         DefaultsKey.switcherEnabled: true,
         DefaultsKey.switcherMergeTabs: false,
+        DefaultsKey.dockPreviewEnabled: false,
         DefaultsKey.autoCheckUpdates: true,
         // Finder never benefits from being "quit" (it just relaunches), so
         // it's excepted out of the box.
@@ -126,12 +146,17 @@ enum Defaults {
         DefaultsKey.panelUtilityCleaning: true,
         DefaultsKey.panelUtilityURLCleaner: true,
         DefaultsKey.panelUtilityUninstaller: true,
+        DefaultsKey.panelUtilityHomebrew: true,
         DefaultsKey.panelControlMouseScroll: true,
         DefaultsKey.panelControlSwitcher: true,
+        DefaultsKey.panelControlDockPreview: true,
         DefaultsKey.panelControlCutPaste: true,
         DefaultsKey.panelControlAutoQuit: true,
         DefaultsKey.panelControlShelf: true,
         DefaultsKey.panelControlWindowMaximize: true,
+        DefaultsKey.panelShowKeepAwake: true,
+        DefaultsKey.panelShowUtilities: true,
+        DefaultsKey.panelShowControls: true,
         // Menu bar metrics start off (the icon stays clean) and are opt-in.
         // The panel shows every monitoring block by default; users hide what
         // they don't want.
@@ -207,8 +232,34 @@ enum Defaults {
         sanitizedBundleIdentifierList(mandatoryAutoQuitExceptionBundleIDs + bundleIDs)
     }
 
+    static func sanitizedPanelItemOrder(_ raw: String, defaultOrder: [String]) -> [String] {
+        let allowed = Set(defaultOrder)
+        var seen = Set<String>()
+        var result: [String] = []
+        for id in raw.split(separator: ",").map(String.init) {
+            guard allowed.contains(id), seen.insert(id).inserted else { continue }
+            result.append(id)
+        }
+        for id in defaultOrder where seen.insert(id).inserted {
+            result.append(id)
+        }
+        return result
+    }
+
     static func sanitizedAppVolume(_ volume: Double) -> Double {
         guard volume.isFinite else { return 1 }
         return min(max(volume, 0), 2)
+    }
+
+    static func sanitizedAppOutputDeviceUID(_ value: Any?) -> String? {
+        MixerRoutingSupport.sanitizedDeviceUID(value)
+    }
+
+    static func sanitizedAppOutputDevices(_ raw: [String: Any]) -> [String: String] {
+        MixerRoutingSupport.sanitizedRouteMap(raw)
+    }
+
+    static func sanitizedPreferredInputDeviceUID(_ value: Any?) -> String? {
+        MixerRoutingSupport.sanitizedDeviceUID(value)
     }
 }

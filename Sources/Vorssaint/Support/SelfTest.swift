@@ -31,6 +31,10 @@ enum SelfTest {
         }
         _ = SystemInfo.batterySnapshot() // may be nil on desktops
 
+        if SystemInfo.wallClockUptimeSeconds() == nil {
+            failures.append("uptime reading")
+        }
+
         if let smc = SMCClient() {
             let keys = smc.keys { $0.hasPrefix("Tp") || $0.hasPrefix("Te") || $0.hasPrefix("Tg") }
             if keys.isEmpty {

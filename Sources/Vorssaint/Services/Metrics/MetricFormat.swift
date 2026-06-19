@@ -104,6 +104,16 @@ enum MetricFormat {
         }
     }
 
+    static func uptime(_ seconds: Int) -> String {
+        let total = max(0, seconds)
+        let days = total / 86_400
+        let hours = (total % 86_400) / 3_600
+        let minutes = (total % 3_600) / 60
+        if days > 0 { return "\(days)d \(hours)h" }
+        if hours > 0 { return "\(hours)h \(minutes)min" }
+        return "\(minutes)min"
+    }
+
     // MARK: Network speed & filtering
 
     /// Per-second download/upload from two cumulative readings. Guards against a

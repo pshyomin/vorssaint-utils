@@ -116,37 +116,53 @@ struct MonitorSettings: View {
     }
 }
 
-/// Drag-to-reorder list for the panel's major sections. Writes the new order to
-/// `PanelLayout`, which the live panel observes. A bounded, non-scrolling list so
-/// it sits inside the grouped Form without its own scroll area.
+/// Drag-to-reorder and show/hide list for the panel's major sections. Writes the
+/// order to `PanelLayout` and each section's visibility to its own key, both of
+/// which the live panel observes. A bounded, non-scrolling list so it sits inside
+/// the grouped Form without its own scroll area.
 private struct PanelOrderEditor: View {
     @ObservedObject private var l10n = L10n.shared
     @AppStorage(DefaultsKey.monitorShowFanControlBeta) private var showFanControlBeta = false
     @State private var order: [PanelSectionID] = PanelLayout.order
     @State private var dragging: PanelSectionID?
+    /// Bumped whenever a section is shown/hidden so the dimmed titles and the
+    /// "can't hide the last one" guard recompute.
+    @State private var visibilityChanges = 0
 
     var body: some View {
         VStack(spacing: 0) {
             ForEach(editableOrder) { id in
                 VStack(spacing: 0) {
                     HStack(spacing: 8) {
-                        Image(systemName: "line.3.horizontal")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.tertiary)
-                        Text(id.title(l10n.s))
-                        Spacer()
+                        HStack(spacing: 8) {
+                            Image(systemName: "line.3.horizontal")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.tertiary)
+                            Text(id.title(l10n.s))
+                                .foregroundStyle(isShown(id) ? .primary : .secondary)
+                            Spacer(minLength: 0)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                        .opacity(dragging == id ? 0.45 : 1)
+                        .onDrag {
+                            dragging = id
+                            return NSItemProvider(object: id.rawValue as NSString)
+                        }
+                        .onDrop(of: [UTType.text],
+                                delegate: PanelOrderDropDelegate(target: id,
+                                                                 order: $order,
+                                                                 dragging: $dragging))
+
+                        // Fan Control is governed by its own beta toggle above, so
+                        // it has no separate show/hide here.
+                        if id != .fanControl {
+                            SectionVisibilityEye(id: id,
+                                                 canHide: visibleCount > 1,
+                                                 onChange: { visibilityChanges += 1 })
+                        }
                     }
                     .frame(height: 32)
-                    .contentShape(Rectangle())
-                    .opacity(dragging == id ? 0.45 : 1)
-                    .onDrag {
-                        dragging = id
-                        return NSItemProvider(object: id.rawValue as NSString)
-                    }
-                    .onDrop(of: [UTType.text],
-                            delegate: PanelOrderDropDelegate(target: id,
-                                                             order: $order,
-                                                             dragging: $dragging))
 
                     if id != editableOrder.last {
                         Divider()
@@ -161,6 +177,52 @@ private struct PanelOrderEditor: View {
 
     private var editableOrder: [PanelSectionID] {
         order.filter { $0 != .fanControl || showFanControlBeta }
+    }
+
+    private func isShown(_ id: PanelSectionID) -> Bool {
+        _ = visibilityChanges
+        return PanelLayout.isShown(id)
+    }
+
+    /// How many sections are currently visible in the panel, so the last one
+    /// can't be hidden (which would leave an empty panel).
+    private var visibleCount: Int {
+        _ = visibilityChanges
+        return editableOrder.reduce(0) { $0 + (PanelLayout.isShown($1) ? 1 : 0) }
+    }
+}
+
+/// An eye button that shows/hides one panel section, backed by that section's
+/// own visibility key so the live panel updates immediately.
+private struct SectionVisibilityEye: View {
+    @ObservedObject private var l10n = L10n.shared
+    let id: PanelSectionID
+    let canHide: Bool
+    let onChange: () -> Void
+    @AppStorage private var shown: Bool
+
+    init(id: PanelSectionID, canHide: Bool, onChange: @escaping () -> Void) {
+        self.id = id
+        self.canHide = canHide
+        self.onChange = onChange
+        _shown = AppStorage(wrappedValue: id.shownByDefault, id.visibilityKey)
+    }
+
+    var body: some View {
+        Button {
+            shown.toggle()
+            onChange()
+        } label: {
+            Image(systemName: shown ? "eye.fill" : "eye.slash.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(shown ? Color.accentColor : Color.secondary)
+                .frame(width: 30, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // Keep at least one section visible.
+        .disabled(shown && !canHide)
+        .help(shown ? l10n.s.panelHideItem : l10n.s.panelShowItem)
     }
 }
 

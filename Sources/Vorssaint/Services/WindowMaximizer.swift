@@ -105,10 +105,10 @@ final class WindowMaximizer: ObservableObject {
                 if let fresh = self.target(at: event.location),
                    fresh.windowID == target.windowID {
                     if !toggle(fresh) {
-                        pressNativeButton(fresh.button)
+                        pressNativeButtonIfSafe(fresh)
                     }
                 } else {
-                    pressNativeButton(target.button)
+                    pressNativeButtonIfSafe(target)
                 }
             }
             return nil
@@ -123,10 +123,10 @@ final class WindowMaximizer: ObservableObject {
               let element = elementAt(point: point),
               let window = topLevelWindow(from: element),
               role(of: window) == (kAXWindowRole as String),
+              pid(of: window) == candidate.pid,
               !boolAttribute(window, "AXFullScreen"),
               let buttonFrame = greenButtonFrame(in: window, containing: point),
               let windowID = AXWindowResolver.windowID(for: window),
-              windowID == candidate.windowID,
               let frame = frame(of: window)
         else { return nil }
 
@@ -134,7 +134,8 @@ final class WindowMaximizer: ObservableObject {
                            button: buttonFrame.button,
                            windowID: windowID,
                            frame: frame,
-                           buttonFrame: buttonFrame.frame)
+                           buttonFrame: buttonFrame.frame,
+                           allowsNativeFallback: buttonFrame.allowsNativeFallback)
     }
 
     @discardableResult
@@ -239,13 +240,18 @@ final class WindowMaximizer: ObservableObject {
     }
 
     private func greenButtonFrame(in window: AXUIElement, containing point: CGPoint) -> ButtonFrame? {
-        for attribute in [kAXFullScreenButtonAttribute as String, kAXZoomButtonAttribute as String] {
-            guard let button = elementAttribute(window, attribute),
+        for entry in [
+            (attribute: kAXZoomButtonAttribute as String, allowsNativeFallback: true),
+            (attribute: kAXFullScreenButtonAttribute as String, allowsNativeFallback: false)
+        ] {
+            guard let button = elementAttribute(window, entry.attribute),
                   boolAttribute(button, kAXEnabledAttribute as String, default: true),
                   let frame = frame(of: button),
                   frame.insetBy(dx: -3, dy: -3).contains(point)
             else { continue }
-            return ButtonFrame(button: button, frame: frame)
+            return ButtonFrame(button: button,
+                               frame: frame,
+                               allowsNativeFallback: entry.allowsNativeFallback)
         }
         return nil
     }
@@ -282,8 +288,9 @@ final class WindowMaximizer: ObservableObject {
         _ = setPosition(frame.origin, on: window)
     }
 
-    private func pressNativeButton(_ button: AXUIElement) {
-        AXUIElementPerformAction(button, kAXPressAction as CFString)
+    private func pressNativeButtonIfSafe(_ target: ClickTarget) {
+        guard target.allowsNativeFallback else { return }
+        AXUIElementPerformAction(target.button, kAXPressAction as CFString)
     }
 
     private func setPosition(_ point: CGPoint, on element: AXUIElement) -> Bool {
@@ -342,6 +349,12 @@ final class WindowMaximizer: ObservableObject {
         return (value as! AXUIElement)
     }
 
+    private func pid(of element: AXUIElement) -> pid_t? {
+        var pid: pid_t = 0
+        AXUIElementGetPid(element, &pid)
+        return pid == 0 ? nil : pid
+    }
+
     private func role(of element: AXUIElement) -> String? {
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &value) == .success
@@ -390,6 +403,7 @@ private struct ClickTarget {
     let windowID: CGWindowID
     let frame: AXFrame
     let buttonFrame: AXFrame
+    let allowsNativeFallback: Bool
 
     func acceptsMouseUp(at point: CGPoint, tolerance: CGFloat) -> Bool {
         buttonFrame.insetBy(dx: -tolerance, dy: -tolerance).contains(point)
@@ -399,6 +413,7 @@ private struct ClickTarget {
 private struct ButtonFrame {
     let button: AXUIElement
     let frame: AXFrame
+    let allowsNativeFallback: Bool
 }
 
 private struct AXFrame: Equatable {

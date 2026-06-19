@@ -27,11 +27,19 @@ Vorssaint keeps an eye on Accessibility and Screen Recording, so features tend t
 
 ### Accessibility
 
-This one powers the scroll direction inverter, the switcher, Finder cut and paste and quit on close. If they do nothing, open System Settings, Privacy and Security, Accessibility and confirm Vorssaint is switched on. If you rebuilt the app yourself, its signature can shift and macOS may treat it as a different app, so remove the old Vorssaint entry with the minus button and grant it again. For steady local signing while you develop, see the [contributing guide](../CONTRIBUTING.md).
+This one powers the scroll direction inverter, the switcher, Dock Preview, Finder cut and paste and quit on close. If they do nothing, open System Settings, Privacy and Security, Accessibility and confirm Vorssaint is switched on. If you rebuilt the app yourself, its signature can shift and macOS may treat it as a different app, so remove the old Vorssaint entry with the minus button and grant it again. For steady local signing while you develop, see the [contributing guide](../CONTRIBUTING.md).
 
 ### Screen Recording
 
-This one only feeds window titles and thumbnails in the switcher. If the switcher falls back to app icons, switch Vorssaint on in System Settings, Privacy and Security, Screen Recording. macOS may ask you to quit and reopen the app after you grant it.
+This one feeds window titles and thumbnails in the switcher and Dock Preview. If previews fall back to app icons or Dock Preview stays unavailable, switch Vorssaint on in System Settings, Privacy and Security, Screen Recording. macOS may ask you to quit and reopen the app after you grant it.
+
+### System Audio Recording
+
+This one powers per app volume and output routing in the mixer. If the mixer says it needs permission, open System Settings, Privacy and Security, Screen and System Audio Recording, and switch Vorssaint on. Audio is processed only for the local mixer.
+
+### Automation
+
+Finder cut and paste, the uninstaller and Homebrew's Terminal handoff may ask for Automation. If a Finder move or Terminal handoff does nothing after a denial, open System Settings, Privacy and Security, Automation, and allow Vorssaint for the app it needs to control.
 
 ## Resetting permissions
 
@@ -53,7 +61,7 @@ To wipe Vorssaint's granted permissions and let macOS ask again from scratch, pi
 
 ## Clean uninstall
 
-The bundled script takes out everything Vorssaint added, the app itself, its preferences and saved state, the login item, its Accessibility and Screen Recording grants, and the optional closed lid `sudoers` rule.
+The bundled script takes out everything Vorssaint added, the app itself, its preferences and saved state, the login item, its privacy grants, and the optional closed lid `sudoers` rule.
 
 ```sh
 ./Tools/uninstall.sh

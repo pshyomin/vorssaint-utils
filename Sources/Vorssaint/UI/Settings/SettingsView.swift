@@ -8,7 +8,7 @@ import SwiftUI
 /// the Features section, so every feature gets its own page.
 enum SettingsPage: Hashable {
     case general, energy, monitor
-    case mouse, switcher, cutPaste, autoQuit, uninstaller, urlCleaner, shelf
+    case mouse, switcher, cutPaste, autoQuit, uninstaller, urlCleaner, homebrew, shelf
     case advanced, about, releaseNotes, support
 }
 
@@ -41,6 +41,7 @@ struct SettingsView: View {
                     Label(l10n.s.autoQuitName, systemImage: "xmark.rectangle").tag(SettingsPage.autoQuit)
                     Label(l10n.s.uninstallerName, systemImage: "trash").tag(SettingsPage.uninstaller)
                     Label(l10n.s.urlCleanerName, systemImage: "link").tag(SettingsPage.urlCleaner)
+                    Label(l10n.s.homebrewName, systemImage: "shippingbox").tag(SettingsPage.homebrew)
                     Label(l10n.s.shelfName, systemImage: "tray.full").tag(SettingsPage.shelf)
                 }
 
@@ -71,6 +72,7 @@ struct SettingsView: View {
         case .autoQuit: AutoQuitSettings()
         case .uninstaller: UninstallerView()
         case .urlCleaner: URLCleanerSettings()
+        case .homebrew: HomebrewSettings()
         case .shelf: ShelfSettings()
         case .advanced: AdvancedSettings()
         case .about: AboutSettings()
@@ -326,8 +328,10 @@ struct MouseSettings: View {
 struct SwitcherSettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var permissions = Permissions.shared
+    @ObservedObject private var dockPreview = DockPreviewService.shared
     @AppStorage(DefaultsKey.switcherEnabled) private var switcherEnabled = true
     @AppStorage(DefaultsKey.switcherMergeTabs) private var switcherMergeTabs = false
+    @AppStorage(DefaultsKey.dockPreviewEnabled) private var dockPreviewEnabled = false
 
     var body: some View {
         Form {
@@ -349,7 +353,21 @@ struct SwitcherSettings: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            if switcherEnabled {
+            Section {
+                Toggle(l10n.s.dockPreviewEnable, isOn: $dockPreviewEnabled)
+                    .onChange(of: dockPreviewEnabled) { _, _ in
+                        DockPreviewService.shared.syncWithPreferences()
+                    }
+                Text(dockPreviewCaption)
+                    .font(.caption)
+                    .foregroundStyle(dockPreviewWarning ? .orange : .secondary)
+            } header: {
+                HStack(spacing: 6) {
+                    Text(l10n.s.dockPreviewName)
+                    PanelBetaBadge(text: l10n.s.betaBadge)
+                }
+            }
+            if switcherEnabled || dockPreviewEnabled {
                 if !permissions.accessibility {
                     Section(l10n.s.permissionRequired) {
                         PermissionRow(kind: .accessibility)
@@ -363,6 +381,22 @@ struct SwitcherSettings: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private var dockPreviewCaption: String {
+        guard dockPreviewEnabled else { return l10n.s.dockPreviewEnableCaption }
+        if !permissions.accessibility { return "\(l10n.s.permissionRequired): \(l10n.s.permissionAccessibility)" }
+        if !permissions.screenRecording { return "\(l10n.s.permissionRequired): \(l10n.s.permissionScreenRecording)" }
+        switch dockPreview.blockedReason {
+        case .magnification: return l10n.s.dockPreviewMagnificationBlocked
+        case .dockUnavailable: return l10n.s.dockPreviewDockUnavailable
+        default:
+            return l10n.s.betaFeatureWarning
+        }
+    }
+
+    private var dockPreviewWarning: Bool {
+        dockPreviewEnabled
     }
 }
 

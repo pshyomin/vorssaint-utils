@@ -80,8 +80,8 @@ else
 fi
 
 # --test: compile and run the standalone unit tests (pure helpers only: metrics,
-# defaults, localization contracts; no app, no UI, no IOKit), then exit. Fast and
-# deterministic; no XCTest needed.
+# Homebrew parsing, defaults, localization contracts; no app, no UI, no IOKit),
+# then exit. Fast and deterministic; no XCTest needed.
 if (( TEST )); then
     echo "▸ Building & running unit tests against $(basename "$SDK")…"
     rm -rf build
@@ -93,6 +93,9 @@ if (( TEST )); then
         Sources/Vorssaint/Core/Localizations/Strings+*.swift \
         Sources/Vorssaint/Core/ReleaseNotes.swift \
         Sources/Vorssaint/Core/URLCleaning.swift \
+        Sources/Vorssaint/Services/Audio/MixerRoutingSupport.swift \
+        Sources/Vorssaint/Services/DockPreview/DockPreviewSupport.swift \
+        Sources/Vorssaint/Services/Homebrew/HomebrewSupport.swift \
         Sources/Vorssaint/Services/Metrics/MetricFormat.swift \
         Sources/Vorssaint/Services/CleaningMode/CleaningUnlockCounter.swift \
         Tests/MetricsTests.swift \
@@ -136,6 +139,10 @@ fi
 printf 'APPL????' > "$STAGE/Contents/PkgInfo"
 cp build/AppIcon.icns "$STAGE/Contents/Resources/AppIcon.icns"
 cp build/MenuBarIcon.png build/MenuBarIcon@2x.png build/BrandMark.png "$STAGE/Contents/Resources/"
+if [[ -f Resources/Gifs/dockPreview.gif ]]; then
+    mkdir -p "$STAGE/Contents/Resources/Gifs"
+    cp Resources/Gifs/dockPreview.gif "$STAGE/Contents/Resources/Gifs/"
+fi
 xattr -c -r "$STAGE" 2>/dev/null || true
 
 # Signing, in order of preference:

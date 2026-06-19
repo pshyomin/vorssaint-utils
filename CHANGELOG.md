@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.0.4] - 2026-06-18
+
+### Added
+- Utilities now includes a Homebrew manager for searching, installing and
+  uninstalling formulae and casks from the menu panel, with popularity-sorted
+  search results and a guided setup flow when Homebrew is not installed.
+- The Volume Mixer can now route each app to the system default output or a
+  specific speaker, display or audio device.
+- The Volume Mixer now includes a global microphone picker that remembers a
+  preferred input and restores it when the device reconnects.
+- Dock Preview can now show window previews when hovering over open apps in the
+  Dock, with a temporary peek before selecting a window.
+- This update includes a one-time Dock Preview intro with a short demo and beta
+  note.
+
+### Changed
+- Panel edit mode now has a clearer OK button, reset control and drag handles
+  for reordering items.
+- Utilities now defaults to Homebrew first, followed by Uninstaller, Clean URL
+  and Cleaning Mode.
+
+### Fixed
+- App Switcher now keeps fullscreen windows available when they are on another
+  Space.
+- App Switcher thumbnails now try a secondary ScreenCaptureKit match for native
+  fullscreen windows on another Space.
+- Green-button maximization now avoids falling through to native fullscreen when
+  the custom resize path cannot run.
+- Quit on close now ignores stale AX windows after a real close-button request
+  when WindowServer confirms there is no visible app window left.
+- Quit on close now follows explicit close-button clicks in apps that do not
+  always emit standard window-close callbacks.
+- Settings now opens beside the menu panel instead of starting underneath it.
+
 ## [3.0.3] - 2026-06-18
 
 ### Changed
