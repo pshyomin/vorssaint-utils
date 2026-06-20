@@ -48,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         bindManagers()
 
         HotkeyManager.shared.onActivate = { KeepAwakeManager.shared.toggle() }
-        HotkeyManager.shared.setEnabled(UserDefaults.standard.bool(forKey: DefaultsKey.hotkeyEnabled))
+        HotkeyManager.shared.syncWithPreferences()
 
         KeepAwakeManager.shared.recoverIfNeeded()
         AppActivationTracker.shared.start()

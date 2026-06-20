@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.0.6] - 2026-06-20
+
+### Added
+- Global shortcuts for Keep Awake, Shelf and App Switcher can now be changed or
+  turned off.
+
+### Fixed
+- Closed Vorssaint Settings windows no longer linger in App Switcher.
+- Minimized windows now stay open and remain available in App Switcher and Dock
+  Preview.
+
 ## [3.0.5] - 2026-06-19
 
 ### Added

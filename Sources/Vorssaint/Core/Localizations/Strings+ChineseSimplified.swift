@@ -43,7 +43,7 @@ extension Strings {
         panelNormalSleep: "正常睡眠",
         panelSettings: "设置",
         panelQuit: "退出",
-        panelHotkeyHint: "⌃⌥⌘K 切换",
+        panelHotkeyHint: "快捷键切换",
 
         keepAwakeTitle: "保持唤醒",
         keepAwakeEndsIn: "剩余时间",
@@ -112,7 +112,7 @@ extension Strings {
         menuBarSection: "菜单栏",
         showCountdown: "在图标旁显示剩余时间",
         globalHotkeySection: "全局快捷键",
-        hotkeyToggle: "用 ⌃⌥⌘K 切换“保持唤醒”",
+        hotkeyToggle: "启用“保持唤醒”快捷键",
         hotkeyCaption: "在任何 App 中都有效，无需额外权限。",
 
         sessionSection: "会话",
@@ -133,9 +133,9 @@ extension Strings {
         scrollActiveNow: "正在反转鼠标滚动",
 
         switcherSection: "App 切换器",
-        switcherEnable: "用 Vorssaint 切换器替换 ⌘Tab",
+        switcherEnable: "使用 Vorssaint 切换器",
         switcherEnableCaption: "通过真实缩略图切换窗口，包括同一 App 的多个窗口之间。",
-        switcherUsageHint: "按住 ⌘ 并点按 Tab 进行浏览；松开即可激活窗口。Shift 或 ← 返回；Q 退出所选 App；Esc 取消。",
+        switcherUsageHint: "按住快捷键进行浏览；松开即可激活窗口。Shift 或 ← 返回；Q 退出所选 App；Esc 取消。",
         switcherNoWindows: "没有打开的窗口",
         switcherMergeTabs: "每个 App 仅显示一项",
         switcherMergeTabsCaption: "将一个 App 的所有窗口合并为切换器中的一项，而不是每个窗口一项。",
@@ -300,7 +300,7 @@ extension Strings {
         shelfEnable: "用于拖放文件的临时区域",
         shelfEnableCaption: "一个浮动空间，用来收集文件、图像和文本，稍后再拖到任何 App 中。",
         shelfHowTitle: "使用方法",
-        shelfStep1: "用 ⌃⌥⌘D 打开它，或在拖动时晃动鼠标打开。",
+        shelfStep1: "用快捷键打开它，或在拖动时晃动鼠标打开。",
         shelfStep2: "把文件、图像、链接或文本拖放到上面以暂存。",
         shelfStep3: "需要时再把每个项目拖回任何 App。",
         shelfShakeToggle: "拖动时晃动鼠标打开",
@@ -503,6 +503,13 @@ extension Strings {
         donateButton: "Buy me a coffee",
         donateThanks: "谢谢你的到来。🖤",
         showMenuBarIcon: "显示菜单栏图标",
-        showMenuBarIconCaption: "如果 Vorssaint 的图标消失了（当菜单栏空间不足时，macOS 可能会隐藏图标，这在带刘海的 Mac 上很常见），请从“应用程序”或 Spotlight 重新打开 Vorssaint：这会重建图标，如果它仍被隐藏，则会打开此窗口。当你已经能进入这里时，上方按钮的作用相同。让菜单栏中的图标更少，或 Vorssaint 的指标更少，会大大降低这种情况发生的几率。"
+        showMenuBarIconCaption: "如果 Vorssaint 的图标消失了（当菜单栏空间不足时，macOS 可能会隐藏图标，这在带刘海的 Mac 上很常见），请从“应用程序”或 Spotlight 重新打开 Vorssaint：这会重建图标，如果它仍被隐藏，则会打开此窗口。当你已经能进入这里时，上方按钮的作用相同。让菜单栏中的图标更少，或 Vorssaint 的指标更少，会大大降低这种情况发生的几率。",
+        shortcutRecording: "按下新的快捷键",
+        shortcutReset: "重置",
+        shortcutInvalid: "请至少搭配 Control、Option 或 Command 和一个按键。",
+        shortcutConflictFormat: "此快捷键已被 %@ 使用。",
+        shortcutUnavailable: "macOS 拒绝了此快捷键。请选择另一个。",
+        shelfShortcutToggle: "Shelf 快捷键",
+        switcherUsageHintFormat: "按住 %@ 进行浏览；松开即可激活窗口。Shift 或 ← 返回；Q 退出所选 App；Esc 取消。"
     )
 }

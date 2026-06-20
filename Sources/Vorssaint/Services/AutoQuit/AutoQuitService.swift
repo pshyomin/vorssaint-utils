@@ -42,7 +42,6 @@ final class AutoQuitService: ObservableObject {
     ])
     private static let windowLossNotifications = Set([
         kAXUIElementDestroyedNotification as String,
-        kAXWindowMiniaturizedNotification as String,
         kAXMainWindowChangedNotification as String,
         kAXFocusedWindowChangedNotification as String,
         kAXApplicationDeactivatedNotification as String,
@@ -59,6 +58,8 @@ final class AutoQuitService: ObservableObject {
     private var closeRequestTap: CFMachPort?
     private var closeRequestRunLoopSource: CFRunLoopSource?
     private var recentCloseButtonRequests: [pid_t: Date] = [:]
+    private var minimizedWindows: [pid_t: Set<CGWindowID>] = [:]
+    private var appsWithUnresolvedMinimizedWindows = Set<pid_t>()
 
     private let closeRequestGrace: TimeInterval = 5
 
@@ -120,6 +121,8 @@ final class AutoQuitService: ObservableObject {
         observers.removeAll()
         hadWindows.removeAll()
         recentCloseButtonRequests.removeAll()
+        minimizedWindows.removeAll()
+        appsWithUnresolvedMinimizedWindows.removeAll()
     }
 
     // MARK: - Per-app observers
@@ -152,6 +155,8 @@ final class AutoQuitService: ObservableObject {
         observers[pid] = nil
         hadWindows[pid] = nil
         recentCloseButtonRequests[pid] = nil
+        minimizedWindows[pid] = nil
+        appsWithUnresolvedMinimizedWindows.remove(pid)
     }
 
     /// Called from the C observer callback (on the main run loop).
@@ -162,6 +167,17 @@ final class AutoQuitService: ObservableObject {
             pid = observerPID
         }
         guard pid != 0 else { return }
+
+        if notification == (kAXWindowMiniaturizedNotification as String) {
+            markMinimizedWindow(pid: pid, element: element)
+            return
+        }
+        if notification == (kAXWindowDeminiaturizedNotification as String) {
+            clearMinimizedWindow(pid: pid, element: element)
+        }
+        if notification == (kAXUIElementDestroyedNotification as String) {
+            clearMinimizedWindow(pid: pid, element: element)
+        }
 
         if Self.windowRefreshNotifications.contains(notification), let observer = observers[pid] {
             refreshWindows(pid: pid, observer: observer)
@@ -189,6 +205,7 @@ final class AutoQuitService: ObservableObject {
         if app.isHidden && !hiddenByCloseRequest { return }
 
         let appElement = AXUIElementCreateApplication(pid)
+        if hasKnownMinimizedWindow(pid: pid, appElement: appElement) { return }
         // After an explicit close-button click, ignore off-screen titled windows
         // for ALL apps, not just hidden ones. Chromium/Electron apps especially
         // keep a titled helper/background window parked off-screen (or on another
@@ -213,12 +230,15 @@ final class AutoQuitService: ObservableObject {
         let stillRecentClose = hasRecentCloseButtonRequest(pid: pid)
         let stillHiddenByCloseRequest = app.isHidden && stillRecentClose
         if app.isHidden && !stillHiddenByCloseRequest { return }
+        if hasKnownMinimizedWindow(pid: pid, appElement: appElement) { return }
         guard !hasUserFacingWindow(pid: pid,
                                    appElement: appElement,
                                    includeOffscreenTitled: !stillRecentClose) else { return }
 
         hadWindows[pid] = false
         recentCloseButtonRequests[pid] = nil
+        minimizedWindows[pid] = nil
+        appsWithUnresolvedMinimizedWindows.remove(pid)
         app.terminate()
     }
 
@@ -229,6 +249,7 @@ final class AutoQuitService: ObservableObject {
         for window in windows {
             watch(window: window, observer: observer, refcon: refcon)
         }
+        recordMinimizedWindows(pid: pid, windows: windows)
         if !windows.isEmpty || hasWindowServerUserWindow(pid: pid) == true {
             hadWindows[pid] = true
         }
@@ -266,6 +287,10 @@ final class AutoQuitService: ObservableObject {
     /// shouldn't keep an app "alive" for this purpose.
     private static func isStandardWindow(_ window: AXUIElement) -> Bool {
         if boolAttribute(window, "AXFullScreen") { return true }
+        if boolAttribute(window, kAXMinimizedAttribute as String),
+           role(of: window) == (kAXWindowRole as String) {
+            return true
+        }
 
         var subrole: CFTypeRef?
         if AXUIElementCopyAttributeValue(window, kAXSubroleAttribute as CFString, &subrole) == .success,
@@ -417,6 +442,40 @@ final class AutoQuitService: ObservableObject {
         }
         recentCloseButtonRequests[pid] = nil
         return false
+    }
+
+    private func markMinimizedWindow(pid: pid_t, element: AXUIElement) {
+        if let id = AXWindowResolver.windowID(for: element) {
+            minimizedWindows[pid, default: []].insert(id)
+        } else {
+            appsWithUnresolvedMinimizedWindows.insert(pid)
+        }
+    }
+
+    private func clearMinimizedWindow(pid: pid_t, element: AXUIElement) {
+        if let id = AXWindowResolver.windowID(for: element) {
+            minimizedWindows[pid]?.remove(id)
+            if minimizedWindows[pid]?.isEmpty == true {
+                minimizedWindows[pid] = nil
+            }
+        } else {
+            appsWithUnresolvedMinimizedWindows.remove(pid)
+        }
+    }
+
+    private func recordMinimizedWindows(pid: pid_t, windows: [AXUIElement]) {
+        let ids = windows.compactMap { window -> CGWindowID? in
+            guard Self.boolAttribute(window, kAXMinimizedAttribute as String) else { return nil }
+            return AXWindowResolver.windowID(for: window)
+        }
+        guard !ids.isEmpty else { return }
+        minimizedWindows[pid, default: []].formUnion(ids)
+    }
+
+    private func hasKnownMinimizedWindow(pid: pid_t, appElement: AXUIElement) -> Bool {
+        let windows = standardWindows(of: appElement)
+        recordMinimizedWindows(pid: pid, windows: windows)
+        return minimizedWindows[pid]?.isEmpty == false || appsWithUnresolvedMinimizedWindows.contains(pid)
     }
 
     private func scheduleCloseRequestChecks(pid: pid_t) {

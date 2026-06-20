@@ -86,6 +86,7 @@ struct SettingsView: View {
 
 struct GeneralSettings: View {
     @ObservedObject private var l10n = L10n.shared
+    @ObservedObject private var hotkeys = HotkeyManager.shared
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var loginError: String?
     @AppStorage(DefaultsKey.hotkeyEnabled) private var hotkeyEnabled = true
@@ -133,6 +134,14 @@ struct GeneralSettings: View {
                     .onChange(of: hotkeyEnabled) { _, enabled in
                         HotkeyManager.shared.setEnabled(enabled)
                     }
+                ShortcutPreferenceRow(role: .keepAwake, isEnabled: hotkeyEnabled) {
+                    HotkeyManager.shared.syncWithPreferences()
+                }
+                if hotkeyEnabled, hotkeys.registrationFailed {
+                    Text(l10n.s.shortcutUnavailable)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
                 Text(l10n.s.hotkeyCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -344,7 +353,11 @@ struct SwitcherSettings: View {
                 Text(l10n.s.switcherEnableCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(l10n.s.switcherUsageHint)
+                ShortcutPreferenceRow(role: .switcher, isEnabled: switcherEnabled) {
+                    AppSwitcher.shared.syncWithPreferences()
+                }
+                Text(String(format: l10n.s.switcherUsageHintFormat,
+                            GlobalShortcutRole.switcher.savedShortcut.displayString))
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

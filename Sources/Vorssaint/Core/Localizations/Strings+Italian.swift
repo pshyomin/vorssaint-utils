@@ -43,7 +43,7 @@ extension Strings {
         panelNormalSleep: "Stop normale",
         panelSettings: "Impostazioni",
         panelQuit: "Esci",
-        panelHotkeyHint: "⌃⌥⌘K attiva/disattiva",
+        panelHotkeyHint: "La scorciatoia attiva/disattiva",
 
         keepAwakeTitle: "Mantieni attivo",
         keepAwakeEndsIn: "Termina tra",
@@ -112,7 +112,7 @@ extension Strings {
         menuBarSection: "Barra dei menu",
         showCountdown: "Mostra il tempo rimanente accanto all'icona",
         globalHotkeySection: "Scorciatoia globale",
-        hotkeyToggle: "Attiva/disattiva «Mantieni attivo» con ⌃⌥⌘K",
+        hotkeyToggle: "Abilita scorciatoia per «Mantieni attivo»",
         hotkeyCaption: "Funziona in qualsiasi app, senza autorizzazioni aggiuntive.",
 
         sessionSection: "Sessione",
@@ -133,9 +133,9 @@ extension Strings {
         scrollActiveNow: "Scorrimento del mouse invertito ora",
 
         switcherSection: "Commutatore app",
-        switcherEnable: "Sostituisci ⌘Tab con il commutatore di Vorssaint",
+        switcherEnable: "Usa il commutatore di Vorssaint",
         switcherEnableCaption: "Passa da una finestra all'altra con miniature reali, anche tra più finestre della stessa app.",
-        switcherUsageHint: "Tieni premuto ⌘ e premi Tab per spostarti; rilascia per attivare la finestra. Maiuscole o ← torna indietro; Q chiude l'app selezionata; Esc annulla.",
+        switcherUsageHint: "Tieni premuta la scorciatoia per spostarti; rilascia per attivare la finestra. Maiuscole o ← torna indietro; Q chiude l'app selezionata; Esc annulla.",
         switcherNoWindows: "Nessuna finestra aperta",
         switcherMergeTabs: "Mostra una voce per app",
         switcherMergeTabsCaption: "Raggruppa tutte le finestre di un'app in un'unica voce nel commutatore, anziché una per finestra.",
@@ -300,7 +300,7 @@ extension Strings {
         shelfEnable: "Area temporanea per trascinare i file",
         shelfEnableCaption: "Uno spazio fluttuante per raccogliere file, immagini e testo, da trascinare poi ovunque.",
         shelfHowTitle: "Come si usa",
-        shelfStep1: "Aprilo con ⌃⌥⌘D oppure scuotendo il mouse durante un trascinamento.",
+        shelfStep1: "Aprilo con la scorciatoia oppure scuotendo il mouse durante un trascinamento.",
         shelfStep2: "Rilascia su di esso file, immagini, link o testo per conservarli.",
         shelfStep3: "Trascina di nuovo fuori ogni elemento verso qualsiasi app quando ti serve.",
         shelfShakeToggle: "Apri scuotendo il mouse durante il trascinamento",
@@ -503,6 +503,13 @@ extension Strings {
         donateButton: "Buy me a coffee",
         donateThanks: "Grazie di essere qui. 🖤",
         showMenuBarIcon: "Mostra l'icona nella barra dei menu",
-        showMenuBarIconCaption: "Se l'icona di Vorssaint scompare (macOS può nascondere le icone della barra dei menu quando lo spazio finisce, cosa comune sui Mac con notch), riapri Vorssaint da Applicazioni o da Spotlight: questo ricrea l'icona e, se è ancora nascosta, apre questa finestra. Il pulsante qui sopra fa lo stesso quando riesci già ad arrivare fin qui. Tenere meno icone nella barra dei menu, o meno metriche in Vorssaint, riduce di molto questa eventualità."
+        showMenuBarIconCaption: "Se l'icona di Vorssaint scompare (macOS può nascondere le icone della barra dei menu quando lo spazio finisce, cosa comune sui Mac con notch), riapri Vorssaint da Applicazioni o da Spotlight: questo ricrea l'icona e, se è ancora nascosta, apre questa finestra. Il pulsante qui sopra fa lo stesso quando riesci già ad arrivare fin qui. Tenere meno icone nella barra dei menu, o meno metriche in Vorssaint, riduce di molto questa eventualità.",
+        shortcutRecording: "Premi la nuova scorciatoia",
+        shortcutReset: "Ripristina",
+        shortcutInvalid: "Usa almeno Control, Option o Command insieme a un tasto.",
+        shortcutConflictFormat: "Questa scorciatoia è già usata da %@.",
+        shortcutUnavailable: "macOS ha rifiutato questa scorciatoia. Scegline un'altra.",
+        shelfShortcutToggle: "Scorciatoia Shelf",
+        switcherUsageHintFormat: "Tieni premuto %@ per spostarti; rilascia per attivare la finestra. Maiuscole o ← torna indietro; Q chiude l'app selezionata; Esc annulla."
     )
 }

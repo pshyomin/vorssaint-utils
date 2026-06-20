@@ -43,7 +43,7 @@ extension Strings {
         panelNormalSleep: "Veille normale",
         panelSettings: "Réglages",
         panelQuit: "Quitter",
-        panelHotkeyHint: "⌃⌥⌘K bascule",
+        panelHotkeyHint: "Le raccourci bascule",
 
         keepAwakeTitle: "Garder éveillé",
         keepAwakeEndsIn: "Se termine dans",
@@ -112,7 +112,7 @@ extension Strings {
         menuBarSection: "Barre des menus",
         showCountdown: "Afficher le temps restant à côté de l’icône",
         globalHotkeySection: "Raccourci global",
-        hotkeyToggle: "Basculer « Garder éveillé » avec ⌃⌥⌘K",
+        hotkeyToggle: "Activer le raccourci pour « Garder éveillé »",
         hotkeyCaption: "Fonctionne dans toutes les apps, sans autorisation supplémentaire.",
 
         sessionSection: "Session",
@@ -133,9 +133,9 @@ extension Strings {
         scrollActiveNow: "Inversion du défilement de la souris en cours",
 
         switcherSection: "Sélecteur d’apps",
-        switcherEnable: "Remplacer ⌘Tab par le sélecteur Vorssaint",
+        switcherEnable: "Utiliser le sélecteur Vorssaint",
         switcherEnableCaption: "Changez de fenêtre avec de vraies miniatures, y compris entre plusieurs fenêtres de la même app.",
-        switcherUsageHint: "Maintenez ⌘ et appuyez sur Tab pour naviguer ; relâchez pour activer la fenêtre. Maj ou ← revient en arrière ; Q quitte l’app sélectionnée ; Échap annule.",
+        switcherUsageHint: "Maintenez le raccourci pour naviguer ; relâchez pour activer la fenêtre. Maj ou ← revient en arrière ; Q quitte l’app sélectionnée ; Échap annule.",
         switcherNoWindows: "Aucune fenêtre ouverte",
         switcherMergeTabs: "Afficher une seule entrée par app",
         switcherMergeTabsCaption: "Regroupe toutes les fenêtres d’une app en une seule entrée dans le sélecteur, au lieu d’une entrée par fenêtre.",
@@ -300,7 +300,7 @@ extension Strings {
         shelfEnable: "Espace temporaire pour glisser des fichiers",
         shelfEnableCaption: "Un espace flottant pour rassembler fichiers, images et texte, puis les glisser ailleurs plus tard.",
         shelfHowTitle: "Comment l’utiliser",
-        shelfStep1: "Ouvrez-la avec ⌃⌥⌘D, ou en secouant la souris pendant un glissement.",
+        shelfStep1: "Ouvrez-la avec le raccourci, ou en secouant la souris pendant un glissement.",
         shelfStep2: "Déposez-y des fichiers, des images, des liens ou du texte pour les conserver.",
         shelfStep3: "Glissez chaque élément vers n’importe quelle app au moment voulu.",
         shelfShakeToggle: "Ouvrir en secouant la souris pendant un glissement",
@@ -503,6 +503,13 @@ extension Strings {
         donateButton: "Buy me a coffee",
         donateThanks: "Merci d’être là. 🖤",
         showMenuBarIcon: "Afficher l’icône dans la barre des menus",
-        showMenuBarIconCaption: "Si l’icône de Vorssaint disparaît (macOS peut masquer des icônes lorsque la barre des menus manque de place, fréquent sur les Mac avec encoche), rouvrez Vorssaint depuis Applications ou Spotlight : cela recrée l’icône et, si elle reste masquée, ouvre cette fenêtre. Le bouton ci-dessus fait de même lorsque vous parvenez déjà jusqu’ici. Garder moins d’icônes dans la barre des menus, ou moins de mesures dans Vorssaint, réduit nettement le risque."
+        showMenuBarIconCaption: "Si l’icône de Vorssaint disparaît (macOS peut masquer des icônes lorsque la barre des menus manque de place, fréquent sur les Mac avec encoche), rouvrez Vorssaint depuis Applications ou Spotlight : cela recrée l’icône et, si elle reste masquée, ouvre cette fenêtre. Le bouton ci-dessus fait de même lorsque vous parvenez déjà jusqu’ici. Garder moins d’icônes dans la barre des menus, ou moins de mesures dans Vorssaint, réduit nettement le risque.",
+        shortcutRecording: "Appuyez sur le nouveau raccourci",
+        shortcutReset: "Réinitialiser",
+        shortcutInvalid: "Utilisez au moins Control, Option ou Command avec une touche.",
+        shortcutConflictFormat: "Ce raccourci est déjà utilisé par %@.",
+        shortcutUnavailable: "macOS a refusé ce raccourci. Choisissez-en un autre.",
+        shelfShortcutToggle: "Raccourci Shelf",
+        switcherUsageHintFormat: "Maintenez %@ pour naviguer ; relâchez pour activer la fenêtre. Maj ou ← revient en arrière ; Q quitte l’app sélectionnée ; Échap annule."
     )
 }

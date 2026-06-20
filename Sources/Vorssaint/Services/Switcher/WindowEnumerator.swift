@@ -67,15 +67,19 @@ enum WindowEnumerator {
             if accessibilityWindows[pid] != nil, axWindow == nil {
                 continue
             }
+            let isMinimized = axWindow?.isMinimized ?? false
 
             let cgFrame = CGRect(x: (boundsDict["X"] as? NSNumber)?.doubleValue ?? 0,
                                  y: (boundsDict["Y"] as? NSNumber)?.doubleValue ?? 0,
                                  width: (boundsDict["Width"] as? NSNumber)?.doubleValue ?? 0,
                                  height: (boundsDict["Height"] as? NSNumber)?.doubleValue ?? 0)
-            let frame = frameIsSwitchable(cgFrame) ? cgFrame : (axWindow?.frame ?? cgFrame)
-            guard frame.width >= minimumSize.width, frame.height >= minimumSize.height else { continue }
+            guard let frame = switchableFrame(cgFrame, fallback: axWindow?.frame, isMinimized: isMinimized) else {
+                continue
+            }
 
-            if let alpha = (info[kCGWindowAlpha as String] as? NSNumber)?.doubleValue, alpha == 0 { continue }
+            if let alpha = (info[kCGWindowAlpha as String] as? NSNumber)?.doubleValue, alpha == 0, !isMinimized {
+                continue
+            }
 
             let title = info[kCGWindowName as String] as? String ?? ""
             let isOnScreen = (info[kCGWindowIsOnscreen as String] as? NSNumber)?.boolValue
@@ -107,6 +111,7 @@ enum WindowEnumerator {
                                    appName: appName,
                                    pid: pid,
                                    isOnScreen: isOnScreen,
+                                   isMinimized: isMinimized,
                                    frame: frame))
         }
         appendAccessibilityOnlyWindows(to: &windows,
@@ -130,6 +135,7 @@ enum WindowEnumerator {
     private struct AccessibilityWindowSnapshot {
         let title: String
         let frame: CGRect?
+        let isMinimized: Bool
     }
 
     private struct AccessibilityWindowSnapshotList {
@@ -170,7 +176,8 @@ enum WindowEnumerator {
         for window in axWindows {
             if let id = AXWindowResolver.windowID(for: window) {
                 let snapshot = AccessibilityWindowSnapshot(title: accessibilityTitle(for: window),
-                                                           frame: accessibilityFrame(for: window))
+                                                           frame: accessibilityFrame(for: window),
+                                                           isMinimized: boolAttribute(window, kAXMinimizedAttribute as String))
                 byID[id] = snapshot
                 ordered.append((id, snapshot))
             }
@@ -210,14 +217,16 @@ enum WindowEnumerator {
             for entry in list.ordered {
                 guard windows.count < maximumCount else { return }
                 guard !seen.contains(entry.id),
-                      let frame = entry.snapshot.frame,
-                      frameIsSwitchable(frame) else { continue }
+                      let frame = switchableFrame(entry.snapshot.frame,
+                                                  fallback: nil,
+                                                  isMinimized: entry.snapshot.isMinimized) else { continue }
                 seen.insert(entry.id)
                 windows.append(.window(id: entry.id,
                                        title: entry.snapshot.title,
                                        appName: appName,
                                        pid: pid,
                                        isOnScreen: false,
+                                       isMinimized: entry.snapshot.isMinimized,
                                        frame: frame))
             }
         }
@@ -254,8 +263,21 @@ enum WindowEnumerator {
         frame.width >= minimumSize.width && frame.height >= minimumSize.height
     }
 
+    private static func switchableFrame(_ frame: CGRect?,
+                                        fallback: CGRect?,
+                                        isMinimized: Bool) -> CGRect? {
+        if let frame, frameIsSwitchable(frame) { return frame }
+        if let fallback, frameIsSwitchable(fallback) { return fallback }
+        guard isMinimized else { return nil }
+        return CGRect(origin: .zero, size: minimumSize)
+    }
+
     private static func isUserFacingWindow(_ window: AXUIElement) -> Bool {
         if boolAttribute(window, "AXFullScreen") { return true }
+        if boolAttribute(window, kAXMinimizedAttribute as String),
+           stringAttribute(window, kAXRoleAttribute as String) == (kAXWindowRole as String) {
+            return true
+        }
         if let subrole = stringAttribute(window, kAXSubroleAttribute as String) {
             return subrole == "AXStandardWindow" || subrole == "AXFullScreenWindow"
         }
@@ -309,7 +331,8 @@ enum WindowEnumerator {
     private static func ownWindowTitle(for windowID: CGWindowID) -> String? {
         guard let window = NSApp.windows.first(where: { $0.windowNumber == Int(windowID) }),
               window.styleMask.contains(.titled),
-              window.canBecomeKey else { return nil }
+              window.canBecomeKey,
+              window.isVisible || window.isMiniaturized else { return nil }
         return window.title.isEmpty ? AppInfo.name : window.title
     }
 

@@ -15,11 +15,13 @@ enum DefaultsKey {
     static let defaultDuration = "defaultDurationMinutes" // 0 = indefinite
     static let batteryLimit = "batteryLimitPercent"       // 0 = never
     static let hotkeyEnabled = "hotkeyEnabled"
+    static let keepAwakeShortcut = "keepAwakeShortcut"    // GlobalShortcut storage value
     static let showCountdown = "showCountdownInMenuBar"
     static let hasOnboarded = "hasOnboarded"
     static let sleepDisabledFlag = "vorssDisabledSleep"   // internal guard for pmset disablesleep
     static let scrollInverterEnabled = "scrollInverterEnabled"
     static let switcherEnabled = "switcherEnabled"
+    static let switcherShortcut = "switcherShortcut"      // GlobalShortcut storage value
     static let switcherMergeTabs = "switcherMergeTabs"     // show one switcher entry per app (collapse all of an app's windows)
     static let dockPreviewEnabled = "dockPreviewEnabled"
     static let previewSize = "previewSize"                // app switcher + dock preview thumbnail size
@@ -32,6 +34,8 @@ enum DefaultsKey {
     static let autoQuitEnabled = "autoQuitEnabled"
     static let autoQuitExceptions = "autoQuitExceptions"  // [bundle id] kept running
     static let shelfEnabled = "shelfEnabled"
+    static let shelfShortcutEnabled = "shelfShortcutEnabled"
+    static let shelfShortcut = "shelfShortcut"            // GlobalShortcut storage value
     static let shelfShakeToOpen = "shelfShakeToOpen"
     static let urlCleanerEnabled = "urlCleanerEnabled"
     static let windowMaximizeEnabled = "windowMaximizeEnabled"
@@ -151,9 +155,11 @@ enum Defaults {
         DefaultsKey.defaultDuration: 0,
         DefaultsKey.batteryLimit: 10,
         DefaultsKey.hotkeyEnabled: true,
+        DefaultsKey.keepAwakeShortcut: "control+option+command:40",
         DefaultsKey.showCountdown: false,
         DefaultsKey.scrollInverterEnabled: false,
         DefaultsKey.switcherEnabled: true,
+        DefaultsKey.switcherShortcut: "command:48",
         DefaultsKey.switcherMergeTabs: false,
         DefaultsKey.dockPreviewEnabled: false,
         DefaultsKey.previewSize: "normal",
@@ -163,6 +169,8 @@ enum Defaults {
         // it's excepted out of the box.
         DefaultsKey.autoQuitExceptions: mandatoryAutoQuitExceptionBundleIDs,
         // When the shelf is on, the shake gesture is on too (still toggleable).
+        DefaultsKey.shelfShortcutEnabled: true,
+        DefaultsKey.shelfShortcut: "control+option+command:2",
         DefaultsKey.shelfShakeToOpen: true,
         DefaultsKey.urlCleanerEnabled: false,
         DefaultsKey.windowMaximizeEnabled: false,

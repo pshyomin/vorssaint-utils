@@ -43,7 +43,7 @@ extension Strings {
         panelNormalSleep: "Normaler Ruhezustand",
         panelSettings: "Einstellungen",
         panelQuit: "Beenden",
-        panelHotkeyHint: "⌃⌥⌘K schaltet um",
+        panelHotkeyHint: "Kurzbefehl schaltet um",
 
         keepAwakeTitle: "Wachhalten",
         keepAwakeEndsIn: "Endet in",
@@ -112,7 +112,7 @@ extension Strings {
         menuBarSection: "Menüleiste",
         showCountdown: "Verbleibende Zeit neben dem Symbol anzeigen",
         globalHotkeySection: "Globaler Kurzbefehl",
-        hotkeyToggle: "„Wachhalten“ mit ⌃⌥⌘K umschalten",
+        hotkeyToggle: "Kurzbefehl für „Wachhalten“ aktivieren",
         hotkeyCaption: "Funktioniert in jeder App, ohne zusätzliche Berechtigungen.",
 
         sessionSection: "Sitzung",
@@ -133,9 +133,9 @@ extension Strings {
         scrollActiveNow: "Mausscrollen wird gerade umgekehrt",
 
         switcherSection: "App-Umschalter",
-        switcherEnable: "⌘Tab durch den Vorssaint-Umschalter ersetzen",
+        switcherEnable: "Vorssaint-Umschalter verwenden",
         switcherEnableCaption: "Wechsle Fenster mit echten Vorschaubildern, auch zwischen mehreren Fenstern derselben App.",
-        switcherUsageHint: "Halte ⌘ und tippe Tab, um zu navigieren; loslassen, um das Fenster zu aktivieren. Umschalt oder ← geht zurück; Q beendet die ausgewählte App; Esc bricht ab.",
+        switcherUsageHint: "Halte den Kurzbefehl zum Navigieren; loslassen, um das Fenster zu aktivieren. Umschalt oder ← geht zurück; Q beendet die ausgewählte App; Esc bricht ab.",
         switcherNoWindows: "Keine geöffneten Fenster",
         switcherMergeTabs: "Einen Eintrag pro App anzeigen",
         switcherMergeTabsCaption: "Fasst alle Fenster einer App zu einem Eintrag im Umschalter zusammen, statt einen Eintrag pro Fenster.",
@@ -300,7 +300,7 @@ extension Strings {
         shelfEnable: "Temporäre Ablage zum Ziehen von Dateien",
         shelfEnableCaption: "Ein schwebender Ort, um Dateien, Bilder und Text zu sammeln und später überallhin zu ziehen.",
         shelfHowTitle: "So geht's",
-        shelfStep1: "Öffne sie mit ⌃⌥⌘D oder indem du die Maus während des Ziehens schüttelst.",
+        shelfStep1: "Öffne sie mit dem Kurzbefehl oder indem du die Maus während des Ziehens schüttelst.",
         shelfStep2: "Lege Dateien, Bilder, Links oder Text darauf ab, um sie zu verwahren.",
         shelfStep3: "Ziehe jedes Objekt wieder in eine beliebige App, wenn du es brauchst.",
         shelfShakeToggle: "Durch Schütteln der Maus beim Ziehen öffnen",
@@ -503,6 +503,13 @@ extension Strings {
         donateButton: "Buy me a coffee",
         donateThanks: "Danke, dass du hier bist. 🖤",
         showMenuBarIcon: "Menüleistensymbol anzeigen",
-        showMenuBarIconCaption: "Falls das Symbol von Vorssaint verschwindet (macOS kann Menüleistensymbole ausblenden, wenn der Platz in der Leiste knapp wird, häufig bei Macs mit Notch), öffne Vorssaint erneut über „Programme“ oder Spotlight: Das stellt das Symbol wieder her und öffnet, falls es weiterhin ausgeblendet ist, dieses Fenster. Der Knopf oben bewirkt dasselbe, wenn du bereits hierher gelangst. Weniger Symbole in der Menüleiste oder weniger Vorssaint-Werte machen es deutlich unwahrscheinlicher."
+        showMenuBarIconCaption: "Falls das Symbol von Vorssaint verschwindet (macOS kann Menüleistensymbole ausblenden, wenn der Platz in der Leiste knapp wird, häufig bei Macs mit Notch), öffne Vorssaint erneut über „Programme“ oder Spotlight: Das stellt das Symbol wieder her und öffnet, falls es weiterhin ausgeblendet ist, dieses Fenster. Der Knopf oben bewirkt dasselbe, wenn du bereits hierher gelangst. Weniger Symbole in der Menüleiste oder weniger Vorssaint-Werte machen es deutlich unwahrscheinlicher.",
+        shortcutRecording: "Neuen Kurzbefehl drücken",
+        shortcutReset: "Zurücksetzen",
+        shortcutInvalid: "Verwende mindestens Control, Option oder Command mit einer Taste.",
+        shortcutConflictFormat: "Dieser Kurzbefehl wird bereits von %@ verwendet.",
+        shortcutUnavailable: "macOS hat diesen Kurzbefehl abgelehnt. Wähle einen anderen.",
+        shelfShortcutToggle: "Shelf-Kurzbefehl",
+        switcherUsageHintFormat: "Halte %@ zum Navigieren; loslassen, um das Fenster zu aktivieren. Umschalt oder ← geht zurück; Q beendet die ausgewählte App; Esc bricht ab."
     )
 }

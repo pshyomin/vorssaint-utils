@@ -43,7 +43,7 @@ extension Strings {
         panelNormalSleep: "Reposo normal",
         panelSettings: "Ajustes",
         panelQuit: "Salir",
-        panelHotkeyHint: "⌃⌥⌘K alterna",
+        panelHotkeyHint: "El atajo alterna",
 
         keepAwakeTitle: "Mantener activo",
         keepAwakeEndsIn: "Termina en",
@@ -112,7 +112,7 @@ extension Strings {
         menuBarSection: "Barra de menús",
         showCountdown: "Mostrar el tiempo restante junto al icono",
         globalHotkeySection: "Atajo global",
-        hotkeyToggle: "Alternar «Mantener activo» con ⌃⌥⌘K",
+        hotkeyToggle: "Activar atajo para «Mantener activo»",
         hotkeyCaption: "Funciona en cualquier app, sin permisos adicionales.",
 
         sessionSection: "Sesión",
@@ -133,9 +133,9 @@ extension Strings {
         scrollActiveNow: "Invirtiendo el desplazamiento del ratón ahora",
 
         switcherSection: "Selector de apps",
-        switcherEnable: "Sustituir ⌘Tab por el selector de Vorssaint",
+        switcherEnable: "Usar el selector de Vorssaint",
         switcherEnableCaption: "Cambia de ventana con miniaturas reales, incluso entre varias ventanas de la misma app.",
-        switcherUsageHint: "Mantén ⌘ y pulsa Tab para navegar; suelta para activar la ventana. Mayúsculas o ← retrocede; Q cierra la app seleccionada; Esc cancela.",
+        switcherUsageHint: "Mantén el atajo para navegar; suelta para activar la ventana. Mayúsculas o ← retrocede; Q cierra la app seleccionada; Esc cancela.",
         switcherNoWindows: "No hay ventanas abiertas",
         switcherMergeTabs: "Mostrar una entrada por app",
         switcherMergeTabsCaption: "Agrupa todas las ventanas de una app en una sola entrada del selector, en vez de una por ventana.",
@@ -300,7 +300,7 @@ extension Strings {
         shelfEnable: "Área temporal para arrastrar archivos",
         shelfEnableCaption: "Un espacio flotante para reunir archivos, imágenes y texto, y luego arrastrarlos a cualquier sitio.",
         shelfHowTitle: "Cómo se usa",
-        shelfStep1: "Ábrelo con ⌃⌥⌘D o agitando el ratón durante un arrastre.",
+        shelfStep1: "Ábrelo con el atajo o agitando el ratón durante un arrastre.",
         shelfStep2: "Suelta sobre él archivos, imágenes, enlaces o texto para guardarlos.",
         shelfStep3: "Arrastra cada ítem de vuelta a cualquier app cuando lo necesites.",
         shelfShakeToggle: "Abrir agitando el ratón al arrastrar",
@@ -503,6 +503,13 @@ extension Strings {
         donateButton: "Buy me a coffee",
         donateThanks: "Gracias por estar aquí. 🖤",
         showMenuBarIcon: "Mostrar el icono en la barra de menús",
-        showMenuBarIconCaption: "Si el icono de Vorssaint desaparece (macOS puede ocultar iconos de la barra de menús cuando se queda sin espacio, algo habitual en Macs con notch), vuelve a abrir Vorssaint desde Aplicaciones o Spotlight: eso recrea el icono y, si sigue oculto, abre esta ventana. El botón de arriba hace lo mismo cuando ya puedes llegar hasta aquí. Mantener menos iconos en la barra de menús, o menos métricas en Vorssaint, lo hace mucho menos probable."
+        showMenuBarIconCaption: "Si el icono de Vorssaint desaparece (macOS puede ocultar iconos de la barra de menús cuando se queda sin espacio, algo habitual en Macs con notch), vuelve a abrir Vorssaint desde Aplicaciones o Spotlight: eso recrea el icono y, si sigue oculto, abre esta ventana. El botón de arriba hace lo mismo cuando ya puedes llegar hasta aquí. Mantener menos iconos en la barra de menús, o menos métricas en Vorssaint, lo hace mucho menos probable.",
+        shortcutRecording: "Pulsa el nuevo atajo",
+        shortcutReset: "Restablecer",
+        shortcutInvalid: "Usa al menos Control, Option o Command junto con una tecla.",
+        shortcutConflictFormat: "Este atajo ya lo usa %@.",
+        shortcutUnavailable: "macOS rechazó este atajo. Elige otro.",
+        shelfShortcutToggle: "Atajo del estante",
+        switcherUsageHintFormat: "Mantén %@ para navegar; suelta para activar la ventana. Mayúsculas o ← retrocede; Q cierra la app seleccionada; Esc cancela."
     )
 }

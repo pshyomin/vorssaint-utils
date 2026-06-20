@@ -43,7 +43,7 @@ extension Strings {
         panelNormalSleep: "通常のスリープ",
         panelSettings: "設定",
         panelQuit: "終了",
-        panelHotkeyHint: "⌃⌥⌘K で切り替え",
+        panelHotkeyHint: "ショートカットで切り替え",
 
         keepAwakeTitle: "スリープ防止",
         keepAwakeEndsIn: "残り",
@@ -112,7 +112,7 @@ extension Strings {
         menuBarSection: "メニューバー",
         showCountdown: "アイコンの横に残り時間を表示",
         globalHotkeySection: "グローバルショートカット",
-        hotkeyToggle: "⌃⌥⌘K で「スリープ防止」を切り替え",
+        hotkeyToggle: "「スリープ防止」のショートカットを有効にする",
         hotkeyCaption: "追加のアクセス権なしで、どのアプリでも使えます。",
 
         sessionSection: "セッション",
@@ -133,9 +133,9 @@ extension Strings {
         scrollActiveNow: "現在マウスのスクロールを反転中",
 
         switcherSection: "アプリスイッチャー",
-        switcherEnable: "⌘Tab を Vorssaint のスイッチャーに置き換える",
+        switcherEnable: "Vorssaint のスイッチャーを使う",
         switcherEnableCaption: "実際のサムネールを見ながらウインドウを切り替えられます。同じアプリの複数ウインドウ間でも切り替えできます。",
-        switcherUsageHint: "⌘ を押したまま Tab を押して移動し、放すとウインドウがアクティブになります。Shift または ← で戻る、Q で選択中のアプリを終了、Esc でキャンセルします。",
+        switcherUsageHint: "ショートカットを押したまま移動し、放すとウインドウがアクティブになります。Shift または ← で戻る、Q で選択中のアプリを終了、Esc でキャンセルします。",
         switcherNoWindows: "開いているウインドウはありません",
         switcherMergeTabs: "アプリごとに1つにまとめて表示",
         switcherMergeTabsCaption: "スイッチャーで、アプリのすべてのウインドウをウインドウごとではなく1つの項目にまとめます。",
@@ -300,7 +300,7 @@ extension Strings {
         shelfEnable: "ファイルをドラッグする一時置き場",
         shelfEnableCaption: "ファイル、画像、テキストを集めておき、あとからどこへでもドラッグできるフローティングの置き場です。",
         shelfHowTitle: "使いかた",
-        shelfStep1: "⌃⌥⌘D を押すか、ドラッグ中にマウスを振って開きます。",
+        shelfStep1: "ショートカットを押すか、ドラッグ中にマウスを振って開きます。",
         shelfStep2: "ファイル、画像、リンク、テキストをドロップして保持します。",
         shelfStep3: "必要なときに、各項目をどのアプリへでもドラッグして取り出します。",
         shelfShakeToggle: "ドラッグ中にマウスを振って開く",
@@ -503,6 +503,13 @@ extension Strings {
         donateButton: "Buy me a coffee",
         donateThanks: "来てくれてありがとう。🖤",
         showMenuBarIcon: "メニューバーにアイコンを表示",
-        showMenuBarIconCaption: "Vorssaint のアイコンが消えた場合（メニューバーに空きがなくなると macOS がアイコンを隠すことがあり、ノッチのある Mac でよく起こります）、アプリケーションまたは Spotlight から Vorssaint を開き直してください。アイコンが再作成され、それでも隠れている場合はこのウインドウが開きます。ここまでたどり着けるなら、上のボタンでも同じことができます。メニューバーのアイコンを減らすか、Vorssaint の計測値を減らすと、起こりにくくなります。"
+        showMenuBarIconCaption: "Vorssaint のアイコンが消えた場合（メニューバーに空きがなくなると macOS がアイコンを隠すことがあり、ノッチのある Mac でよく起こります）、アプリケーションまたは Spotlight から Vorssaint を開き直してください。アイコンが再作成され、それでも隠れている場合はこのウインドウが開きます。ここまでたどり着けるなら、上のボタンでも同じことができます。メニューバーのアイコンを減らすか、Vorssaint の計測値を減らすと、起こりにくくなります。",
+        shortcutRecording: "新しいショートカットを押してください",
+        shortcutReset: "リセット",
+        shortcutInvalid: "Control、Option、Command のいずれかとキーを組み合わせてください。",
+        shortcutConflictFormat: "このショートカットはすでに %@ で使われています。",
+        shortcutUnavailable: "macOS がこのショートカットを拒否しました。別のものを選んでください。",
+        shelfShortcutToggle: "Shelf ショートカット",
+        switcherUsageHintFormat: "%@ を押したまま移動し、放すとウインドウがアクティブになります。Shift または ← で戻る、Q で選択中のアプリを終了、Esc でキャンセルします。"
     )
 }

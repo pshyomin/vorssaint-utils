@@ -91,12 +91,20 @@ struct MetricsTests {
         let registeredDefaults = Defaults.registeredDefaults
         expect(registeredDefaults[DefaultsKey.hotkeyEnabled] as? Bool == true,
                "global hotkey is on for clean installs")
+        expect(registeredDefaults[DefaultsKey.keepAwakeShortcut] as? String == "control+option+command:40",
+               "keep awake shortcut defaults to Ctrl+Opt+Cmd+K")
         expect(registeredDefaults[DefaultsKey.switcherEnabled] as? Bool == true,
                "window switcher is on for clean installs")
+        expect(registeredDefaults[DefaultsKey.switcherShortcut] as? String == "command:48",
+               "switcher shortcut defaults to Cmd+Tab")
         expect(registeredDefaults[DefaultsKey.dockPreviewEnabled] as? Bool == false,
                "Dock Preview is opt-in for clean installs")
         expect(registeredDefaults[DefaultsKey.autoCheckUpdates] as? Bool == true,
                "update checks are on for clean installs")
+        expect(registeredDefaults[DefaultsKey.shelfShortcutEnabled] as? Bool == true,
+               "shelf shortcut is on by default once shelf is enabled")
+        expect(registeredDefaults[DefaultsKey.shelfShortcut] as? String == "control+option+command:2",
+               "shelf shortcut defaults to Ctrl+Opt+Cmd+D")
         expect(registeredDefaults[DefaultsKey.shelfShakeToOpen] as? Bool == true,
                "shelf shake opens by default once shelf is enabled")
         expect(registeredDefaults[DefaultsKey.urlCleanerEnabled] as? Bool == false,

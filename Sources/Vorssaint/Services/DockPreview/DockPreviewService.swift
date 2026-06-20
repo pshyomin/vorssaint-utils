@@ -535,7 +535,7 @@ final class DockPreviewService: ObservableObject {
         if let windowID = item.windowID, touchedWindows[windowID] == nil {
             touchedWindows[windowID] = TouchedWindow(
                 pid: item.pid,
-                wasMinimized: WindowActivator.windowIsMinimized(windowID: windowID, pid: item.pid)
+                wasMinimized: item.isMinimized || WindowActivator.windowIsMinimized(windowID: windowID, pid: item.pid)
             )
         }
     }

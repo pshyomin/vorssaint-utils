@@ -614,6 +614,15 @@ struct Strings {
     let donateThanks: String
     let showMenuBarIcon: String
     let showMenuBarIconCaption: String
+
+    // MARK: Configurable shortcuts
+    let shortcutRecording: String
+    let shortcutReset: String
+    let shortcutInvalid: String
+    let shortcutConflictFormat: String
+    let shortcutUnavailable: String
+    let shelfShortcutToggle: String
+    let switcherUsageHintFormat: String
 }
 
 // MARK: - Português (Brasil)
@@ -657,7 +666,7 @@ extension Strings {
         panelNormalSleep: "Suspensão normal",
         panelSettings: "Ajustes",
         panelQuit: "Sair",
-        panelHotkeyHint: "⌃⌥⌘K alterna",
+        panelHotkeyHint: "Atalho alterna",
 
         keepAwakeTitle: "Manter acordado",
         keepAwakeEndsIn: "Termina em",
@@ -726,7 +735,7 @@ extension Strings {
         menuBarSection: "Barra de menus",
         showCountdown: "Mostrar tempo restante ao lado do ícone",
         globalHotkeySection: "Atalho global",
-        hotkeyToggle: "Alternar “Manter acordado” com ⌃⌥⌘K",
+        hotkeyToggle: "Ativar atalho para “Manter acordado”",
         hotkeyCaption: "Funciona em qualquer app, sem permissões extras.",
 
         sessionSection: "Sessão",
@@ -747,9 +756,9 @@ extension Strings {
         scrollActiveNow: "Invertendo a rolagem do mouse agora",
 
         switcherSection: "Alternador de apps",
-        switcherEnable: "Substituir o ⌘Tab pelo alternador do Vorssaint",
+        switcherEnable: "Usar o alternador do Vorssaint",
         switcherEnableCaption: "Troque de janela vendo miniaturas reais, inclusive entre várias janelas do mesmo app.",
-        switcherUsageHint: "Segure ⌘ e toque Tab para navegar; solte para ativar a janela. Shift ou ← volta; Q fecha o app selecionado; Esc cancela.",
+        switcherUsageHint: "Segure o atalho para navegar; solte para ativar a janela. Shift ou ← volta; Q fecha o app selecionado; Esc cancela.",
         switcherNoWindows: "Nenhuma janela aberta",
         switcherMergeTabs: "Mostrar uma entrada por app",
         switcherMergeTabsCaption: "Junta todas as janelas de um app em uma só entrada no alternador, em vez de uma por janela.",
@@ -914,7 +923,7 @@ extension Strings {
         shelfEnable: "Área temporária para arrastar arquivos",
         shelfEnableCaption: "Um espaço flutuante para juntar arquivos, imagens e textos e arrastá-los depois para qualquer app.",
         shelfHowTitle: "Como usar",
-        shelfStep1: "Abra a área com ⌃⌥⌘D ou sacudindo o mouse durante um arraste.",
+        shelfStep1: "Abra a área com o atalho ou sacudindo o mouse durante um arraste.",
         shelfStep2: "Solte arquivos, imagens, links ou texto sobre ela para guardá-los.",
         shelfStep3: "Arraste cada item de volta para qualquer app quando precisar.",
         shelfShakeToggle: "Abrir sacudindo o mouse durante o arraste",
@@ -1117,7 +1126,14 @@ extension Strings {
         donateButton: "Buy me a coffee",
         donateThanks: "Obrigado por estar aqui. 🖤",
         showMenuBarIcon: "Mostrar ícone na barra de menus",
-        showMenuBarIconCaption: "Se o ícone do Vorssaint sumir (o macOS pode esconder ícones quando a barra de menus fica sem espaço, comum em Macs com notch), reabra o Vorssaint pela pasta Aplicativos ou pelo Spotlight: isso recria o ícone e, se ele ainda estiver escondido, abre esta janela. O botão acima faz o mesmo quando você já consegue chegar aqui. Manter menos ícones na barra, ou menos métricas no Vorssaint, reduz bastante a chance."
+        showMenuBarIconCaption: "Se o ícone do Vorssaint sumir (o macOS pode esconder ícones quando a barra de menus fica sem espaço, comum em Macs com notch), reabra o Vorssaint pela pasta Aplicativos ou pelo Spotlight: isso recria o ícone e, se ele ainda estiver escondido, abre esta janela. O botão acima faz o mesmo quando você já consegue chegar aqui. Manter menos ícones na barra, ou menos métricas no Vorssaint, reduz bastante a chance.",
+        shortcutRecording: "Pressione o novo atalho",
+        shortcutReset: "Redefinir",
+        shortcutInvalid: "Use pelo menos Control, Option ou Command junto com uma tecla.",
+        shortcutConflictFormat: "Este atalho já está em uso por %@.",
+        shortcutUnavailable: "O macOS recusou este atalho. Escolha outro.",
+        shelfShortcutToggle: "Atalho da área temporária",
+        switcherUsageHintFormat: "Segure %@ para navegar; solte para ativar a janela. Shift ou ← volta; Q fecha o app selecionado; Esc cancela."
     )
 }
 
@@ -1162,7 +1178,7 @@ extension Strings {
         panelNormalSleep: "Normal sleep",
         panelSettings: "Settings",
         panelQuit: "Quit",
-        panelHotkeyHint: "⌃⌥⌘K toggles",
+        panelHotkeyHint: "Shortcut toggles",
 
         keepAwakeTitle: "Keep awake",
         keepAwakeEndsIn: "Ends in",
@@ -1231,7 +1247,7 @@ extension Strings {
         menuBarSection: "Menu bar",
         showCountdown: "Show remaining time next to the icon",
         globalHotkeySection: "Global shortcut",
-        hotkeyToggle: "Toggle “Keep awake” with ⌃⌥⌘K",
+        hotkeyToggle: "Enable shortcut for “Keep awake”",
         hotkeyCaption: "Works in any app, no extra permissions.",
 
         sessionSection: "Session",
@@ -1252,9 +1268,9 @@ extension Strings {
         scrollActiveNow: "Inverting mouse scrolling right now",
 
         switcherSection: "App switcher",
-        switcherEnable: "Replace ⌘Tab with the Vorssaint switcher",
+        switcherEnable: "Use the Vorssaint switcher",
         switcherEnableCaption: "Switch windows with real thumbnails, including between multiple windows of the same app.",
-        switcherUsageHint: "Hold ⌘ and tap Tab to navigate; release to activate the window. Shift or ← goes back; Q quits the selected app; Esc cancels.",
+        switcherUsageHint: "Hold the shortcut to navigate; release to activate the window. Shift or ← goes back; Q quits the selected app; Esc cancels.",
         switcherNoWindows: "No open windows",
         switcherMergeTabs: "Show one entry per app",
         switcherMergeTabsCaption: "Collapses all of an app's windows into one entry in the switcher, instead of one entry per window.",
@@ -1419,7 +1435,7 @@ extension Strings {
         shelfEnable: "Temporary area for dragging files",
         shelfEnableCaption: "A floating spot to gather files, images and text, then drag them anywhere later.",
         shelfHowTitle: "How to use",
-        shelfStep1: "Open it with ⌃⌥⌘D, or by shaking the mouse during a drag.",
+        shelfStep1: "Open it with the shortcut, or by shaking the mouse during a drag.",
         shelfStep2: "Drop files, images, links or text onto it to hold them.",
         shelfStep3: "Drag each item back out to any app when you need it.",
         shelfShakeToggle: "Open by shaking the mouse while dragging",
@@ -1622,6 +1638,13 @@ extension Strings {
         donateButton: "Buy me a coffee",
         donateThanks: "Thank you for being here. 🖤",
         showMenuBarIcon: "Show menu bar icon",
-        showMenuBarIconCaption: "If Vorssaint's icon disappears (macOS can hide menu bar icons when the bar runs out of room, common on Macs with a notch), reopen Vorssaint from Applications or Spotlight: that rebuilds the icon and, if it's still hidden, opens this window. The button above does the same when you can already get here. Keeping fewer menu bar icons, or fewer Vorssaint metrics, makes it far less likely."
+        showMenuBarIconCaption: "If Vorssaint's icon disappears (macOS can hide menu bar icons when the bar runs out of room, common on Macs with a notch), reopen Vorssaint from Applications or Spotlight: that rebuilds the icon and, if it's still hidden, opens this window. The button above does the same when you can already get here. Keeping fewer menu bar icons, or fewer Vorssaint metrics, makes it far less likely.",
+        shortcutRecording: "Press the new shortcut",
+        shortcutReset: "Reset",
+        shortcutInvalid: "Use at least Control, Option or Command with a key.",
+        shortcutConflictFormat: "This shortcut is already used by %@.",
+        shortcutUnavailable: "macOS rejected this shortcut. Choose another one.",
+        shelfShortcutToggle: "Shelf shortcut",
+        switcherUsageHintFormat: "Hold %@ to navigate; release to activate the window. Shift or ← goes back; Q quits the selected app; Esc cancels."
     )
 }

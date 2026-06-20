@@ -25,14 +25,15 @@ enum WindowActivator {
             return
         }
         focusWindow(windowID: windowID, pid: item.pid)
-        activateApp(app)
+        activateApp(app, allWindows: !item.isMinimized)
 
         guard retry else { return }
         let pid = item.pid
+        let activateAllWindows = !item.isMinimized
         DispatchQueue.main.asyncAfter(deadline: .now() + focusRetryDelay) {
             guard let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated else { return }
             focusWindow(windowID: windowID, pid: pid)
-            activateApp(app)
+            activateApp(app, allWindows: activateAllWindows)
         }
     }
 
@@ -87,10 +88,16 @@ enum WindowActivator {
         window.orderFrontRegardless()
     }
 
-    private static func activateApp(_ app: NSRunningApplication) {
+    private static func activateApp(_ app: NSRunningApplication, allWindows: Bool = true) {
         NSApp.yieldActivation(to: app)
-        if !app.activate(from: NSRunningApplication.current, options: [.activateAllWindows]) {
-            app.activate(options: [.activateAllWindows])
+        if allWindows {
+            if !app.activate(from: NSRunningApplication.current, options: [.activateAllWindows]) {
+                app.activate(options: [.activateAllWindows])
+            }
+        } else {
+            if !app.activate(from: NSRunningApplication.current, options: []) {
+                app.activate(options: [])
+            }
         }
     }
 
