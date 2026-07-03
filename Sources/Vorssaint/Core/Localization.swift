@@ -16,6 +16,8 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     case it = "it"
     case ja = "ja"
     case zhHans = "zh-Hans"
+    case zhTW = "zh-TW"
+    case zhHK = "zh-HK"
 
     var id: String { rawValue }
 
@@ -31,11 +33,23 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .it: return "Italiano"
         case .ja: return "日本語"
         case .zhHans: return "简体中文"
+        case .zhHK: return "繁體中文（香港）"
+        case .zhTW: return "繁體中文（台灣）"
         }
     }
 
     static var systemDefault: AppLanguage {
         let preferred = Locale.preferredLanguages.first ?? "en"
+        let p = preferred.lowercased()
+
+        if p.hasPrefix("zh-hk") || p.hasPrefix("zh-hant-hk") {
+            return .zhHK
+        }
+
+        if p.hasPrefix("zh-tw") || p.hasPrefix("zh-hant-tw") || p.hasPrefix("zh-hant") {
+            return .zhTW
+        }
+        
         let matches: [(String, AppLanguage)] = [
             ("pt", .ptBR), ("tr", .tr), ("es", .es), ("de", .de), ("fr", .fr),
             ("it", .it), ("ja", .ja), ("zh", .zhHans),
@@ -65,6 +79,8 @@ final class L10n: ObservableObject {
         case .it: return .it
         case .ja: return .ja
         case .zhHans: return .zhHans
+        case .zhHK: return .zhHK
+        case .zhTW: return .zhTW
         }
     }
 

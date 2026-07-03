@@ -15,6 +15,8 @@ enum FeatureStrings {
         case .it: return .it
         case .ja: return .ja
         case .zhHans: return .zhHans
+        case .zhTW: return .zhTW
+        case .zhHK: return .zhHK
         }
     }
 
@@ -29,6 +31,8 @@ enum FeatureStrings {
         case .it: return .it
         case .ja: return .ja
         case .zhHans: return .zhHans
+        case .zhTW: return .zhTW
+        case .zhHK: return .zhHK
         }
     }
 
@@ -43,6 +47,8 @@ enum FeatureStrings {
         case .it: return .it
         case .ja: return .ja
         case .zhHans: return .zhHans
+        case .zhTW: return .zhTW
+        case .zhHK: return .zhHK
         }
     }
 
@@ -57,6 +63,8 @@ enum FeatureStrings {
         case .it: return .it
         case .ja: return .ja
         case .zhHans: return .zhHans
+        case .zhTW: return .zhTW
+        case .zhHK: return .zhHK
         }
     }
 }
@@ -127,6 +135,20 @@ struct SettingsCategoryStrings {
         essentials: "基础功能",
         windowsControls: "窗口与控制",
         utilities: "实用工具",
+        app: "App"
+    )
+    
+    static let zhTW = SettingsCategoryStrings(
+        essentials: "基本功能",
+        windowsControls: "視窗與控制",
+        utilities: "工具程式",
+        app: "App"
+    )
+    
+    static let zhHK = SettingsCategoryStrings(
+        essentials: "基本功能",
+        windowsControls: "視窗及控制",
+        utilities: "工具",
         app: "App"
     )
 }
@@ -499,6 +521,80 @@ struct ClipboardFeatureStrings {
         newestFirst: "最新优先",
         active: "正在保存新文本"
     )
+    
+    static let zhTW = ClipboardFeatureStrings(
+        title: "剪貼簿",
+        enable: "儲存剪貼簿紀錄",
+        caption: "儲存複製過的文字，方便之後再次使用。所有內容都會儲存在這台裝置上，並可隨時清除。",
+        localNote: "只會儲存文字。圖片、檔案和過大的內容會被略過。",
+        skipSensitive: "略過可能含有敏感資料的文字",
+        skipSensitiveCaption: "避免儲存像是密碼、權杖或金鑰這類較短的文字。",
+        limit: "數量上限",
+        showInPanel: "在面板中顯示",
+        shortcut: "剪貼簿紀錄快速鍵",
+        shortcutCaption: "開啟快速視窗，可搜尋、釘選項目，並使用 ⌘1 到 ⌘9 貼到上一個 App。",
+        shortcutHint: "點選整列即可複製並貼到上一個 App。按住 ⌘ 再點選則只會複製。",
+        clickRowShortcut: "點選整列",
+        commandClickShortcut: "⌘ 點選",
+        pinned: "已釘選",
+        recent: "最近",
+        pin: "釘選",
+        unpin: "取消釘選",
+        clearRecent: "清除最近項目",
+        clearAll: "清除未釘選項目",
+        empty: "沒有儲存的文字",
+        disabled: "開啟紀錄後，即可開始儲存複製的文字。",
+        search: "搜尋複製的文字",
+        copy: "複製",
+        copied: "已複製",
+        delete: "刪除項目",
+        selectMultiple: "加入堆疊",
+        unselectMultiple: "從堆疊移除",
+        selectedCountFormat: "已選取 %d 個項目",
+        clearSelection: "清除選取項目",
+        moveUp: "上移",
+        moveDown: "下移",
+        noResults: "沒有結果",
+        newestFirst: "最新優先",
+        active: "正在儲存新文字"
+    )
+    
+    static let zhHK = ClipboardFeatureStrings(
+        title: "剪貼簿",
+        enable: "儲存剪貼簿記錄",
+        caption: "儲存複製過的文字，方便之後再次使用。所有內容都會儲存在此裝置上，並可隨時清除。",
+        localNote: "只會儲存文字。圖片、檔案和過大的內容會被略過。",
+        skipSensitive: "略過可能含有敏感資料的文字",
+        skipSensitiveCaption: "避免儲存密碼、權杖或密鑰等較短文字。",
+        limit: "數量上限",
+        showInPanel: "在面板中顯示",
+        shortcut: "剪貼簿記錄快捷鍵",
+        shortcutCaption: "開啟快速視窗，可搜尋、釘選項目，並使用 ⌘1 至 ⌘9 貼到上一個 App。",
+        shortcutHint: "按一下整列即可複製並貼到上一個 App。按住 ⌘ 再按一下則只會複製。",
+        clickRowShortcut: "按一下整列",
+        commandClickShortcut: "⌘ 按一下",
+        pinned: "已釘選",
+        recent: "最近",
+        pin: "釘選",
+        unpin: "取消釘選",
+        clearRecent: "清除最近項目",
+        clearAll: "清除未釘選項目",
+        empty: "沒有已儲存的文字",
+        disabled: "開啟記錄後，即可開始儲存複製的文字。",
+        search: "搜尋複製的文字",
+        copy: "複製",
+        copied: "已複製",
+        delete: "刪除項目",
+        selectMultiple: "加入堆疊",
+        unselectMultiple: "從堆疊移除",
+        selectedCountFormat: "已選取 %d 個項目",
+        clearSelection: "清除所選項目",
+        moveUp: "上移",
+        moveDown: "下移",
+        noResults: "沒有結果",
+        newestFirst: "最新優先",
+        active: "正在儲存新文字"
+    )
 }
 
 struct WindowLayoutFeatureStrings {
@@ -869,6 +965,80 @@ struct WindowLayoutFeatureStrings {
         nextDisplay: "下一台显示器",
         restore: "恢复"
     )
+    
+    static let zhTW = WindowLayoutFeatureStrings(
+        title: "視窗排列",
+        caption: "將目前視窗移到半邊、三等分、角落、另一台顯示器、置中位置或可用螢幕範圍。",
+        showInPanel: "在面板中顯示",
+        shortcuts: "快速鍵",
+        shortcutsCaption: "使用全域快速鍵整理目前視窗，不需要打開面板。",
+        permissionCaption: "使用輔助使用權限，只會移動目前視窗。",
+        noWindow: "找不到目前視窗。",
+        missingPermission: "請允許輔助使用權限以移動視窗。",
+        failed: "無法移動此視窗。",
+        done: "視窗已整理。",
+        restored: "視窗已還原。",
+        noRestore: "沒有可還原的上一個排列方式。",
+        target: "目前視窗",
+        halves: "半邊",
+        thirds: "三等分",
+        corners: "角落",
+        other: "其他操作",
+        leftHalf: "左半邊",
+        rightHalf: "右半邊",
+        topHalf: "上半邊",
+        bottomHalf: "下半邊",
+        leftThird: "左側 1/3",
+        centerThird: "中間 1/3",
+        rightThird: "右側 1/3",
+        leftTwoThirds: "左側 2/3",
+        rightTwoThirds: "右側 2/3",
+        topLeft: "左上角",
+        topRight: "右上角",
+        bottomLeft: "左下角",
+        bottomRight: "右下角",
+        maximize: "最大化",
+        center: "置中",
+        nextDisplay: "下一台顯示器",
+        restore: "還原"
+    )
+    
+    static let zhHK = WindowLayoutFeatureStrings(
+        title: "視窗排列",
+        caption: "將目前視窗移到半邊、三等分、角落、另一部顯示器、置中位置或可用螢幕範圍。",
+        showInPanel: "在面板中顯示",
+        shortcuts: "快捷鍵",
+        shortcutsCaption: "使用全域快捷鍵整理目前視窗，毋須打開面板。",
+        permissionCaption: "使用輔助使用權限，只會移動目前視窗。",
+        noWindow: "找不到目前視窗。",
+        missingPermission: "請同意輔助使用權限以移動視窗。",
+        failed: "無法移動此視窗。",
+        done: "視窗已整理。",
+        restored: "視窗已還原。",
+        noRestore: "沒有可還原的上一個排列方式。",
+        target: "目前視窗",
+        halves: "半邊",
+        thirds: "三等分",
+        corners: "角落",
+        other: "其他操作",
+        leftHalf: "左半邊",
+        rightHalf: "右半邊",
+        topHalf: "上半邊",
+        bottomHalf: "下半邊",
+        leftThird: "左側 1/3",
+        centerThird: "中間 1/3",
+        rightThird: "右側 1/3",
+        leftTwoThirds: "左側 2/3",
+        rightTwoThirds: "右側 2/3",
+        topLeft: "左上角",
+        topRight: "右上角",
+        bottomLeft: "左下角",
+        bottomRight: "右下角",
+        maximize: "最大化",
+        center: "置中",
+        nextDisplay: "下一部顯示器",
+        restore: "還原"
+    )
 }
 
 struct MonitorAlertFeatureStrings {
@@ -1158,5 +1328,63 @@ struct MonitorAlertFeatureStrings {
         diskBodyFormat: "%@ 的可用空间低于 %d%%。",
         batteryTitle: "电池电量低",
         batteryBodyFormat: "电池电量为 %d%%。"
+    )
+    
+    static let zhTW = MonitorAlertFeatureStrings(
+        section: "提醒",
+        caption: "預設為關閉。開啟後，監控功能只會在出現需要注意的狀態時提醒，並依照提醒間隔發送通知。",
+        cpu: "CPU 使用率過高",
+        cpuTemperature: "CPU 溫度過高",
+        memory: "記憶體壓力過高",
+        disk: "磁碟空間不足",
+        battery: "電池電量偏低",
+        cpuThreshold: "CPU 高於",
+        cpuTemperatureThreshold: "溫度高於",
+        diskThreshold: "可用空間低於",
+        batteryThreshold: "電量低於",
+        cooldown: "提醒間隔",
+        cooldown5: "5 分鐘",
+        cooldown15: "15 分鐘",
+        cooldown30: "30 分鐘",
+        cooldown60: "1 小時",
+        cpuTitle: "CPU 使用率過高",
+        cpuBodyFormat: "CPU 已連續數秒高於 %d%%。",
+        cpuTemperatureTitle: "CPU 過熱",
+        cpuTemperatureBodyFormat: "CPU 已達到 %d °C。",
+        memoryTitle: "記憶體壓力過高",
+        memoryBody: "記憶體壓力已達到嚴重等級。",
+        diskTitle: "磁碟空間不足",
+        diskBodyFormat: "%@ 的可用空間低於 %d%%。",
+        batteryTitle: "電池電量偏低",
+        batteryBodyFormat: "電池電量為 %d%%。"
+    )
+    
+    static let zhHK = MonitorAlertFeatureStrings(
+        section: "提示",
+        caption: "預設為關閉。開啟後，監察功能只會在出現需要注意的狀態時提示，並會遵循提示間隔。",
+        cpu: "CPU 使用率過高",
+        cpuTemperature: "CPU 溫度過高",
+        memory: "記憶體壓力過高",
+        disk: "磁碟空間不足",
+        battery: "電池電量偏低",
+        cpuThreshold: "CPU 高於",
+        cpuTemperatureThreshold: "溫度高於",
+        diskThreshold: "可用空間低於",
+        batteryThreshold: "電量低於",
+        cooldown: "提示間隔",
+        cooldown5: "5 分鐘",
+        cooldown15: "15 分鐘",
+        cooldown30: "30 分鐘",
+        cooldown60: "1 小時",
+        cpuTitle: "CPU 使用率過高",
+        cpuBodyFormat: "CPU 已連續數秒高於 %d%%。",
+        cpuTemperatureTitle: "CPU 過熱",
+        cpuTemperatureBodyFormat: "CPU 已達到 %d °C。",
+        memoryTitle: "記憶體壓力過高",
+        memoryBody: "記憶體壓力已達至嚴重水平。",
+        diskTitle: "磁碟空間不足",
+        diskBodyFormat: "%@ 的可用空間低於 %d%%。",
+        batteryTitle: "電池電量偏低",
+        batteryBodyFormat: "電池電量為 %d%%。"
     )
 }
