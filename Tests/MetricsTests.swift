@@ -164,6 +164,8 @@ struct MetricsTests {
             (.it, "Appunti", "Layout finestre", "Utilità", "Avvisi"),
             (.ja, "クリップボード", "ウインドウ配置", "ユーティリティ", "アラート"),
             (.zhHans, "剪贴板", "窗口布局", "实用工具", "提醒"),
+            (.zhTW, "剪貼簿", "視窗排列", "工具程式", "提醒"),
+            (.zhHK, "剪貼簿", "視窗排列", "工具", "提示"),
         ]
         for (language, clipboardTitle, windowTitle, utilitiesTitle, alertsTitle) in featureTitles {
             expect(FeatureStrings.clipboard(language).title == clipboardTitle,
@@ -2077,6 +2079,8 @@ struct MetricsTests {
             (.it, .it),
             (.ja, .ja),
             (.zhHans, .zhHans),
+            (.zhTW, .zhTW),
+            (.zhHK, .zhHK)
         ]
         expect(localizedStrings.count == AppLanguage.allCases.count, "all app languages are covered by tests")
         for (language, strings) in localizedStrings {
