@@ -62,6 +62,13 @@ final class CleaningModeManager: ObservableObject {
             return
         }
         guard installTap() else { return }
+        // Debounce must not filter while the lock is up: its tap can run ahead
+        // of ours (head-insert order depends on creation order) and would eat
+        // the repeated same-key presses the unlock gesture counts on.
+        KeyboardDebounceService.shared.suspend()
+        // Wiping the trackpad is nothing but stray three-finger contacts;
+        // middle-click emulation must not fire from them.
+        MiddleClickService.shared.suspend()
         unlock.reset()
         unlockProgress = 0
         isActive = true
@@ -85,6 +92,9 @@ final class CleaningModeManager: ObservableObject {
         unlock.reset()
         unlockProgress = 0
         isActive = false
+        // Restore debounce and middle click if the user still has them enabled.
+        KeyboardDebounceService.shared.syncWithPreferences()
+        MiddleClickService.shared.syncWithPreferences()
     }
 
     // MARK: - Event tap

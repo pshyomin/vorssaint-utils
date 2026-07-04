@@ -19,6 +19,7 @@ final class StatusItemController {
     private var defaultsObserver: NSObjectProtocol?
     private static let mainAutosaveName = "VorssaintMenuBarItem"
     private static let metricAutosavePrefix = "VorssaintMetric"
+    private static let maxPlacementGeneration = 10_000
 
     private struct MetricStatusGroup {
         let id: String
@@ -65,7 +66,7 @@ final class StatusItemController {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         // A stable identity so macOS remembers the item's position across launches
         // and across rebuilds, instead of re-placing it at the crowded default spot.
-        statusItem.autosaveName = Self.mainAutosaveName
+        statusItem.autosaveName = Self.mainAutosaveName(in: .standard)
         statusItem.behavior = []
         statusItem.isVisible = true
         if let button = statusItem.button {
@@ -83,13 +84,36 @@ final class StatusItemController {
         updateIconAppearance()
     }
 
-    /// Tears the status item down and builds a fresh one. macOS sometimes drops an
-    /// item from a crowded or notched menu bar and won't re-place it; a brand new
-    /// item forces it to re-register, which usually brings the icon back. Backs the
-    /// "Show menu bar icon" button in Settings.
-    func recreateStatusItem() {
+    /// Tears the status item down and builds a fresh one. When recovery is explicit,
+    /// reset the saved placement too; otherwise macOS can restore the new item to
+    /// the same hidden/crowded position that made it unreachable.
+    func recreateStatusItem(resetPlacement: Bool = false) {
+        if resetPlacement {
+            Self.bumpPlacementGeneration(in: .standard)
+        }
         if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
         installStatusItem()
+    }
+
+    private static func placementGeneration(in defaults: UserDefaults) -> Int {
+        min(max(defaults.integer(forKey: DefaultsKey.statusItemPlacementGeneration), 0),
+            maxPlacementGeneration)
+    }
+
+    private static func mainAutosaveName(in defaults: UserDefaults) -> String {
+        let generation = placementGeneration(in: defaults)
+        guard generation > 0 else { return mainAutosaveName }
+        return "\(mainAutosaveName).\(generation)"
+    }
+
+    private static func bumpPlacementGeneration(in defaults: UserDefaults) {
+        // The abandoned autosave name would otherwise strand macOS's saved
+        // placement keys forever (one pair per recovery).
+        let previousName = mainAutosaveName(in: defaults)
+        defaults.removeObject(forKey: "NSStatusItem Preferred Position \(previousName)")
+        defaults.removeObject(forKey: "NSStatusItem Visible \(previousName)")
+        defaults.set((placementGeneration(in: defaults) % maxPlacementGeneration) + 1,
+                     forKey: DefaultsKey.statusItemPlacementGeneration)
     }
 
     private func bind() {

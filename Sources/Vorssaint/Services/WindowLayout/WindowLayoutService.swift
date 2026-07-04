@@ -301,7 +301,8 @@ final class WindowLayoutService: ObservableObject {
                                       EventParamType(typeEventHotKeyID), nil,
                                       MemoryLayout<EventHotKeyID>.size, nil, &id)
                 }
-                guard let action = WindowLayoutAction(shortcutID: id.id) else {
+                guard id.signature == 0x5655_574C,
+                      let action = WindowLayoutAction(shortcutID: id.id) else {
                     return OSStatus(eventNotHandledErr)
                 }
                 let service = Unmanaged<WindowLayoutService>.fromOpaque(userData).takeUnretainedValue()

@@ -40,10 +40,6 @@ struct WindowLayoutSettings: View {
                 Text(text.shortcutsCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                ForEach(WindowLayoutAction.shortcutActions) { action in
-                    WindowLayoutShortcutRow(action: action,
-                                            isEnabled: shortcutsEnabled && permissions.accessibility)
-                }
                 if !service.failedShortcutActions.isEmpty {
                     Text(l10n.s.shortcutUnavailable)
                         .font(.caption)
@@ -88,13 +84,15 @@ struct WindowLayoutSettings: View {
         .formStyle(.grouped)
     }
 
+    /// One row per action: try-it button on the left, the action's global
+    /// shortcut recorder inline on the right — every action is adjustable
+    /// right where it lives, no separate shortcut list to hunt for.
     private func actionRow(_ action: WindowLayoutAction) -> some View {
-        Button {
-            service.apply(action)
-        } label: {
-            Label(title(for: action), systemImage: symbol(for: action))
-        }
-        .disabled(!permissions.accessibility)
+        WindowLayoutActionRow(action: action,
+                              title: title(for: action),
+                              symbol: symbol(for: action),
+                              applyEnabled: permissions.accessibility,
+                              shortcutEnabled: shortcutsEnabled && permissions.accessibility)
     }
 
     private func title(for action: WindowLayoutAction) -> String {
@@ -143,37 +141,52 @@ struct WindowLayoutSettings: View {
     }
 }
 
-private struct WindowLayoutShortcutRow: View {
+private struct WindowLayoutActionRow: View {
     @ObservedObject private var l10n = L10n.shared
     let action: WindowLayoutAction
-    let isEnabled: Bool
+    let title: String
+    let symbol: String
+    let applyEnabled: Bool
+    let shortcutEnabled: Bool
     @AppStorage private var rawValue: String
     @State private var errorText: String?
 
-    init(action: WindowLayoutAction, isEnabled: Bool) {
+    init(action: WindowLayoutAction,
+         title: String,
+         symbol: String,
+         applyEnabled: Bool,
+         shortcutEnabled: Bool) {
         self.action = action
-        self.isEnabled = isEnabled
+        self.title = title
+        self.symbol = symbol
+        self.applyEnabled = applyEnabled
+        self.shortcutEnabled = shortcutEnabled
         _rawValue = AppStorage(wrappedValue: action.defaultShortcut.storageValue, action.shortcutKey)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                Text(action.title(FeatureStrings.windowLayout(l10n.language)))
+                Button {
+                    WindowLayoutService.shared.apply(action)
+                } label: {
+                    Label(title, systemImage: symbol)
+                }
+                .disabled(!applyEnabled)
                 Spacer()
                 ShortcutRecorderButton(shortcut: shortcut,
-                                       isEnabled: isEnabled,
+                                       isEnabled: shortcutEnabled,
                                        recordingTitle: l10n.s.shortcutRecording,
                                        invalidAction: { errorText = l10n.s.shortcutInvalid },
                                        captureAction: save)
                     .frame(width: 108, height: 28)
-                    .disabled(!isEnabled)
+                    .disabled(!shortcutEnabled)
                 Button(l10n.s.shortcutReset) {
                     rawValue = action.defaultShortcut.storageValue
                     errorText = nil
                     WindowLayoutService.shared.syncWithPreferences()
                 }
-                .disabled(!isEnabled || shortcut == action.defaultShortcut)
+                .disabled(!shortcutEnabled || shortcut == action.defaultShortcut)
             }
             if let errorText {
                 Text(errorText)

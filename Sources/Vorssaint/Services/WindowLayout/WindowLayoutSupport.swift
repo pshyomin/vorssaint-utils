@@ -14,8 +14,9 @@ enum WindowLayoutAction: String, CaseIterable, Identifiable {
 
     static let shortcutActions: [WindowLayoutAction] = [
         .leftHalf, .rightHalf, .topHalf, .bottomHalf,
+        .leftThird, .centerThird, .rightThird, .leftTwoThirds, .rightTwoThirds,
         .topLeft, .topRight, .bottomLeft, .bottomRight,
-        .maximize, .center, .restore,
+        .maximize, .center, .restore, .nextDisplay,
     ]
 
     var supportsShortcut: Bool {
@@ -62,8 +63,12 @@ enum WindowLayoutAction: String, CaseIterable, Identifiable {
         case .maximize: return DefaultsKey.windowLayoutShortcutMaximize
         case .center: return DefaultsKey.windowLayoutShortcutCenter
         case .restore: return DefaultsKey.windowLayoutShortcutRestore
-        case .leftThird, .centerThird, .rightThird, .leftTwoThirds, .rightTwoThirds, .nextDisplay:
-            return ""
+        case .leftThird: return DefaultsKey.windowLayoutShortcutLeftThird
+        case .centerThird: return DefaultsKey.windowLayoutShortcutCenterThird
+        case .rightThird: return DefaultsKey.windowLayoutShortcutRightThird
+        case .leftTwoThirds: return DefaultsKey.windowLayoutShortcutLeftTwoThirds
+        case .rightTwoThirds: return DefaultsKey.windowLayoutShortcutRightTwoThirds
+        case .nextDisplay: return DefaultsKey.windowLayoutShortcutNextDisplay
         }
     }
 
@@ -80,8 +85,12 @@ enum WindowLayoutAction: String, CaseIterable, Identifiable {
         case .maximize: return .windowLayoutMaximizeDefault
         case .center: return .windowLayoutCenterDefault
         case .restore: return .windowLayoutRestoreDefault
-        case .leftThird, .centerThird, .rightThird, .leftTwoThirds, .rightTwoThirds, .nextDisplay:
-            return .windowLayoutCenterDefault
+        case .leftThird: return .windowLayoutLeftThirdDefault
+        case .centerThird: return .windowLayoutCenterThirdDefault
+        case .rightThird: return .windowLayoutRightThirdDefault
+        case .leftTwoThirds: return .windowLayoutLeftTwoThirdsDefault
+        case .rightTwoThirds: return .windowLayoutRightTwoThirdsDefault
+        case .nextDisplay: return .windowLayoutNextDisplayDefault
         }
     }
 

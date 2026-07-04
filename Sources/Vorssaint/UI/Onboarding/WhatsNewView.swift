@@ -259,78 +259,225 @@ struct UpdateShowcaseIntroView: View {
     }
 }
 
-/// A one-time note for the launch after update. It is intentionally not a
-/// release note, so the normal changelog preview remains unchanged before download.
+/// A one-time note for the launch after update, in two pages: first where to
+/// follow previews between the now-weekly releases, then the support ask. It
+/// is intentionally not a release note, so the normal changelog preview
+/// remains unchanged before download.
 struct UpdateSupportIntroView: View {
     var onClose: () -> Void
 
     @ObservedObject private var l10n = L10n.shared
     @Environment(\.openURL) private var openURL
+    @State private var step: Step = .community
+
+    private enum Step {
+        case community
+        case support
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(Theme.spaceGradient)
-                        .frame(width: 74, height: 74)
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 28, weight: .semibold))
-                        .foregroundStyle(.white)
+            ZStack {
+                if step == .community {
+                    communityContent
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .leading).combined(with: .opacity),
+                            removal: .move(edge: .leading).combined(with: .opacity)))
+                } else {
+                    supportContent
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing).combined(with: .opacity),
+                            removal: .move(edge: .trailing).combined(with: .opacity)))
                 }
-
-                Text(l10n.s.supportIntroTitle)
-                    .font(.system(size: 22, weight: .bold))
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Text(l10n.s.supportIntroMessage)
-                    .font(.system(size: 13.5))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 430)
-
-                HStack(spacing: 10) {
-                    Button {
-                        openURL(AppInfo.repositoryURL)
-                    } label: {
-                        Label(l10n.s.supportIntroStarButton, systemImage: "star.fill")
-                    }
-                    .buttonStyle(.borderedProminent)
-
-                    Button {
-                        openURL(AppInfo.donateURL)
-                    } label: {
-                        Label(l10n.s.supportIntroCoffeeButton, systemImage: "cup.and.saucer.fill")
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .padding(.top, 4)
-
-                Text(l10n.s.donateThanks)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .padding(.top, 2)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 34)
-            .padding(.top, 34)
-            .padding(.bottom, 28)
+            .clipped()
 
             Divider()
 
-            HStack {
-                Spacer()
+            footer
+        }
+        .frame(width: 560, height: 500)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var communityContent: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .fill(Color.black)
+                    .frame(width: 74, height: 74)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 17, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.14), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+                XLogoShape()
+                    .fill(Color.white, style: FillStyle(eoFill: true))
+                    .frame(width: 36, height: 36)
+            }
+
+            Text(l10n.s.communityIntroTitle)
+                .font(.system(size: 22, weight: .bold))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(l10n.s.communityIntroMessage)
+                .font(.system(size: 13.5))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 440)
+
+            Button {
+                openURL(AppInfo.communityURL)
+            } label: {
+                HStack(spacing: 8) {
+                    XLogoShape()
+                        .fill(Color.white, style: FillStyle(eoFill: true))
+                        .frame(width: 13, height: 13)
+                    Text(l10n.s.communityIntroFollowButton)
+                }
+            }
+            .buttonStyle(XFollowButtonStyle())
+            .padding(.top, 4)
+
+            Text(AppInfo.communityURL.absoluteString
+                .replacingOccurrences(of: "https://", with: ""))
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 2)
+        }
+    }
+
+    private var supportContent: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Theme.spaceGradient)
+                    .frame(width: 74, height: 74)
+                Image(systemName: "heart.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(.white)
+            }
+
+            Text(l10n.s.supportIntroTitle)
+                .font(.system(size: 22, weight: .bold))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(l10n.s.supportIntroMessage)
+                .font(.system(size: 13.5))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 430)
+
+            HStack(spacing: 10) {
+                Button {
+                    openURL(AppInfo.repositoryURL)
+                } label: {
+                    Label(l10n.s.supportIntroStarButton, systemImage: "star.fill")
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button {
+                    openURL(AppInfo.donateURL)
+                } label: {
+                    Label(l10n.s.supportIntroCoffeeButton, systemImage: "cup.and.saucer.fill")
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding(.top, 4)
+
+            Text(l10n.s.donateThanks)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 2)
+        }
+    }
+
+    private var footer: some View {
+        HStack {
+            if step == .community {
+                Button(l10n.s.supportIntroLaterButton) {
+                    onClose()
+                }
+                .keyboardShortcut(.cancelAction)
+            }
+            Spacer()
+            if step == .community {
+                Button(l10n.s.obContinue) {
+                    withAnimation(.easeInOut(duration: 0.3)) { step = .support }
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+            } else {
                 Button(l10n.s.supportIntroLaterButton) {
                     onClose()
                 }
                 .keyboardShortcut(.defaultAction)
                 .controlSize(.large)
             }
-            .padding(16)
         }
-        .frame(width: 560, height: 430)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .padding(16)
+    }
+}
+
+/// The X (Twitter) logo as a vector path in a 24x24 design box, scaled to the
+/// given rect. Fill with `FillStyle(eoFill: true)` so the inner slash cuts out.
+struct XLogoShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let scale = min(rect.width, rect.height) / 24
+        let originX = rect.midX - 12 * scale
+        let originY = rect.midY - 12 * scale
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: originX + x * scale, y: originY + y * scale)
+        }
+        var path = Path()
+        path.move(to: point(18.244, 2.25))
+        path.addLine(to: point(21.552, 2.25))
+        path.addLine(to: point(14.325, 10.51))
+        path.addLine(to: point(22.827, 21.75))
+        path.addLine(to: point(16.17, 21.75))
+        path.addLine(to: point(10.956, 14.933))
+        path.addLine(to: point(4.99, 21.75))
+        path.addLine(to: point(1.68, 21.75))
+        path.addLine(to: point(9.41, 12.915))
+        path.addLine(to: point(1.254, 2.25))
+        path.addLine(to: point(8.08, 2.25))
+        path.addLine(to: point(12.793, 8.481))
+        path.closeSubpath()
+        path.move(to: point(17.083, 19.77))
+        path.addLine(to: point(18.916, 19.77))
+        path.addLine(to: point(7.084, 4.126))
+        path.addLine(to: point(5.117, 4.126))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// X-branded call to action: white label on a black capsule, readable in both
+/// appearances thanks to the faint outline.
+private struct XFollowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13.5, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 9)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(Color.black)
+            )
+            .overlay(
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+            )
+            .opacity(configuration.isPressed ? 0.75 : 1)
+            .contentShape(Capsule(style: .continuous))
     }
 }
 

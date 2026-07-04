@@ -6,8 +6,8 @@ You can review or change every grant in System Settings, under Privacy and Secur
 
 | Permission | Optional | Powers |
 |---|---|---|
-| Accessibility | Yes | Scroll direction, Window Layout, the app and window switcher, Dock Preview, Finder cut and paste, quit on close |
-| Screen Recording | Yes | Window titles and thumbnails in the switcher and Dock Preview |
+| Accessibility | Yes | Scroll direction, Window Layout, the app and window switcher, Dock Preview, Dock click to minimize, middle click, paste as plain text, Finder cut and paste, quit on close |
+| Screen Recording | Yes | Window titles and thumbnails in the switcher and Dock Preview, copy text from screen |
 | System Audio Recording | Yes | Per app volume and output routing in the mixer |
 | Notifications | Yes | Keep awake, battery, Monitor and update alerts |
 | Full Disk Access | Yes | A deeper uninstaller scan |
@@ -24,6 +24,9 @@ You can review or change every grant in System Settings, under Privacy and Secur
 - **Window Layout**, which moves the active window when you use a layout action or shortcut.
 - **App and window switcher**, which captures the switcher hotkey and reads the window list.
 - **Dock Preview**, which reads Dock items and brings windows forward for a temporary peek.
+- **Dock click to minimize**, which spots clicks on the Dock icon of the active app and minimizes or restores its windows.
+- **Middle click**, which turns a three finger press on the trackpad into a middle click.
+- **Paste as plain text**, which presses ⌘V for you after stripping the formatting.
 - **Finder cut and paste**, which steps in on ⌘X and ⌘V while Finder is in front.
 - **Quit on close**, which spots when an app's last window goes away.
 
@@ -35,9 +38,9 @@ You can review or change every grant in System Settings, under Privacy and Secur
 
 **Why it comes up.** On macOS, reading other windows' titles and grabbing their thumbnails counts as screen recording.
 
-**What uses it.** The window switcher and Dock Preview, for live thumbnails and window titles.
+**What uses it.** The window switcher and Dock Preview, for live thumbnails and window titles, and copy text from screen, to capture the area you select.
 
-**If you say no.** The switcher still works and falls back to app icons instead of live thumbnails and titles. Dock Preview stays unavailable. Nothing on your screen is ever written to disk or sent anywhere, since the access only feeds local previews.
+**If you say no.** The switcher still works and falls back to app icons instead of live thumbnails and titles. Dock Preview and copy text from screen stay unavailable. Nothing on your screen is ever written to disk or sent anywhere, since the access only feeds local previews and the text recognition runs offline.
 
 **Optional.** Yes.
 

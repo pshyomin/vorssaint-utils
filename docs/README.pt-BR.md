@@ -6,8 +6,8 @@
 
 *Read in [English](../README.md).*
 
-<p align="center">🇺🇸 🇧🇷 🇪🇸 🇩🇪 🇫🇷 🇮🇹 🇯🇵 🇨🇳</p>
-<p align="center"><sub>A interface fala 8 idiomas, troque quando quiser nos Ajustes.</sub></p>
+<p align="center">🇺🇸 🇧🇷 🇪🇸 🇩🇪 🇫🇷 🇮🇹 🇯🇵 🇨🇳 🇹🇼 🇭🇰 🇷🇺 🇹🇷</p>
+<p align="center"><sub>A interface fala 12 idiomas, troque quando quiser nos Ajustes.</sub></p>
 
 Se o Vorssaint te ajuda, uma ⭐ rápida significa muito e ainda ajuda mais gente a encontrar o projeto. Ele é, e sempre será, 100% gratuito e sem assinatura; o apoio da comunidade é o que mantém tudo vivo, então se quiser ajudar você também pode [me pagar um café](https://buymeacoffee.com/vorssaint) ☕.
 
@@ -111,12 +111,30 @@ Os recursos podem ser ajustados pelos Ajustes ou direto pelo painel.
 
 ### Também incluído
 
-- **📋 Histórico de clipboard**: guarda textos localmente, com fixados, busca,
-  ordem manual e atalhos rápidos para colar.
-- **🪟 Layout de janelas**: move a janela ativa para metades, cantos, centro ou
-  tela útil com atalhos opcionais.
+- **🚀 Painel rápido**: pressione ⌃⌘V em qualquer lugar e um painel flutuante
+  abre com suas ferramentas favoritas a um clique ou tecla, totalmente
+  personalizável.
+- **📋 Histórico de clipboard**: guarda textos, imagens e arquivos copiados
+  localmente, com fixados, busca, ordem manual e atalhos rápidos para colar.
+- **🖼️ Dock Preview**: passe o mouse num ícone do Dock para ver as janelas do
+  app e clicar direto na que você quer.
+- **🖥️ Clique no Dock minimiza**: clique no ícone do app que você está usando
+  e as janelas minimizam, como numa barra de tarefas clássica. Clique de novo e
+  elas voltam.
+- **🪟 Layout de janelas**: move a janela ativa para metades, terços, cantos,
+  centro ou tela útil, cada ação com atalho opcional.
+- **📸 Copiar texto da tela**: selecione qualquer área e o texto é reconhecido
+  offline e copiado, pronto para colar.
+- **🎨 Conta-gotas de cor**: pegue a cor de qualquer pixel com a lupa do sistema
+  e copie como HEX, RGB, HSL ou código SwiftUI.
+- **🎙️ Silenciar microfone**: um clique ou atalho global corta a entrada em
+  todos os apps, e o estado sobrevive à troca de dispositivo.
+- **📄 Colar como texto puro**: atalho opcional cola sem cores, fontes ou
+  links, mantendo o conteúdo original no clipboard.
 - **🖱️ Corrija a direção da rolagem do mouse**: inverte a roda do mouse sem
   mexer na rolagem natural do trackpad.
+- **🖱️ Clique do meio no trackpad**: pressione com três dedos para um clique
+  do meio de verdade, sem precisar de mouse.
 - **🧪 Fan Control beta**: entrada de teste disponível, com controles manuais
   desativados até que os modelos de Mac sejam validados com segurança.
 
@@ -179,8 +197,8 @@ cada concessão.
 
 | Permissão | Usada por | Sem ela |
 |---|---|---|
-| **Acessibilidade** | Inversor de rolagem, layout de janelas, alternador, Dock Preview, recortar e colar, encerrar ao fechar | Esses recursos ficam desligados |
-| **Gravação de Tela** | Títulos e miniaturas no alternador e no Dock Preview | Pré-visualizações ficam limitadas ou indisponíveis |
+| **Acessibilidade** | Inversor de rolagem, layout de janelas, alternador, Dock Preview, clique no Dock minimiza, clique do meio, colar como texto puro, recortar e colar, encerrar ao fechar | Esses recursos ficam desligados |
+| **Gravação de Tela** | Títulos e miniaturas no alternador e no Dock Preview, copiar texto da tela | Pré-visualizações ficam limitadas ou indisponíveis |
 | **Gravação de Áudio do Sistema** | Volume por app e roteamento de saída no mixer | Apps continuam no áudio normal do sistema |
 | **Notificações** | Avisos de fim de sessão, proteção de bateria, Monitor e atualizações | Operação silenciosa |
 | **Acesso Total ao Disco** (opcional) | Varredura mais completa do desinstalador | Varre só os locais acessíveis |

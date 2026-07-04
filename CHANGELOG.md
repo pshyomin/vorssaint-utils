@@ -4,6 +4,89 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.7] - 2026-07-04
+
+### Summary
+Vorssaint 3.1.7 adds the quick panel, a floating hub that opens anywhere with
+one shortcut and holds your favorite tools, lets a click on the Dock icon
+minimize an app's windows, adds a real middle click for the trackpad, saves
+copied images and files in Clipboard History, and adds four new tools: copy
+text from screen, color picker, mute microphone and paste as plain text. It
+also adds Russian and Traditional Chinese (Hong Kong and Taiwan), completes
+the window layout shortcuts, organizes the panel Controls into categories,
+improves Debounce, keeps Monitor lighter on battery, steadies the RAM menu
+bar metric, makes Quit on close safer when switching Desktop spaces, makes
+mouse scroll inversion more reliable and improves Dock Preview, menu bar icon
+recovery and App Switcher previews.
+
+### Added
+- The quick panel: press the shortcut (^⌘V) anywhere and a small floating
+  panel appears with your favorite tools, one click or key away: Keep Awake,
+  mute microphone, copy text from screen, color picker, Clipboard, window
+  layout, Cleaning Mode, Homebrew, Media, Clean URL and the Uninstaller.
+  Every tool opens and runs inside the panel itself. Fully customizable in
+  place: hide, bring back and drag tools around, with arrow-key navigation
+  and 1 to 9 opening items directly.
+- Clicking the Dock icon of the app you are using can now minimize its
+  windows, like traditional taskbars. Off by default, next to Dock Preview in
+  Settings.
+- Middle click on the trackpad: pressing with three fingers now works like a
+  mouse wheel click. Only a real press counts, so taps, swipes and resting
+  fingers never trigger it, and accidental double clicks from tap-to-click
+  are filtered out. While the macOS three-finger drag gesture is enabled it
+  owns three-finger touches, so the middle click waits and Settings explains
+  how to free the gesture. Off by default, in the Mouse tab in Settings.
+- Clipboard history now saves copied images and files alongside text. Images
+  show a thumbnail and paste back as images; files are remembered as links to
+  their location and paste back as the files themselves. Both can be pinned,
+  searched and reordered like any text item, and a new toggle in the Clipboard
+  settings turns this off.
+- Copy text from screen: select any area and the text in it is recognized
+  offline and copied, ready to paste. In the panel and in the new Quick tools
+  page in Settings, with an optional global shortcut.
+- Color picker: grab the color of any pixel with the system loupe and copy it
+  as HEX, RGB, HSL or SwiftUI code. In the panel and in Quick tools.
+- Mute microphone: one click or a global shortcut cuts the Mac's input in
+  every app, and the muted state survives switching input devices.
+- Paste as plain text: an optional shortcut pastes what you copied without
+  colors, fonts or formatting, and the original formatting stays on the
+  clipboard for later pastes. In the Clipboard settings.
+- Window layout shortcuts now cover every action. Next Display, thirds and
+  two-thirds join the existing halves, quarters, maximize, center and restore,
+  and each action row in Settings has its own shortcut recorder.
+- Russian is now available throughout the app, thanks to Artur.
+- Traditional Chinese (Hong Kong and Taiwan) is now available throughout the
+  app, thanks to Jensen.
+
+### Changed
+- Vorssaint now updates on a weekly rhythm so every feature arrives better
+  tested and more polished; critical fixes still ship right away. The short
+  note shown after updating explains it and links to where previews of
+  upcoming features are posted.
+- The menu panel is cleaner and keeps layout options in Settings.
+- The Controls section in the panel is now organized into collapsible
+  categories with an at-a-glance count of what is on, so it stays short as
+  features grow. Dock click to minimize and the trackpad middle click are now
+  right there too, next to everything else.
+
+### Fixed
+- Debounce is more responsive while filtering duplicate key presses.
+- Monitor uses much less energy while showing live menu bar metrics.
+- The RAM metric in the menu bar no longer blinks during brief monitor refresh gaps.
+- Quit on close no longer treats Desktop space switching as closing an app window.
+- Mouse scroll inversion now works with more external mouse wheels, and no
+  longer cancels itself out on mice that report smooth, pixel-precise
+  scrolling. Toggling it now visibly changes direction for those mice too.
+- Monitor now wakes only when the next reading is due while the panel is
+  closed and only slow metrics are shown, instead of waking every refresh
+  just to skip the work.
+- The menu bar icon recovery can bring the icon back after macOS keeps it hidden.
+- App Switcher window thumbnails no longer look skewed while Stage Manager is
+  on. Windows parked in the Stage Manager strip get an upright preview right
+  away and a sharper one as soon as they become active.
+- Longer descriptions in the panel and in Settings are no longer cut off
+  mid-sentence, in every language.
+
 ## [3.1.6] - 2026-06-30
 
 ### Summary

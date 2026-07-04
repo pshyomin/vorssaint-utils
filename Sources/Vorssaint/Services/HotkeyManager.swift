@@ -47,7 +47,10 @@ final class HotkeyManager: ObservableObject {
                 // Not our hotkey: hand it back so the dispatcher keeps walking the
                 // handler chain (the shelf installs its own handler on the same
                 // target). Returning noErr here would swallow the shelf's key.
-                guard hotKeyID.id == 1 else { return OSStatus(eventNotHandledErr) }
+                // The signature must be checked too — ids alone repeat across
+                // the app's registrars and would hijack another feature's key.
+                guard hotKeyID.signature == 0x5655_544C, hotKeyID.id == 1
+                else { return OSStatus(eventNotHandledErr) }
                 let manager = Unmanaged<HotkeyManager>.fromOpaque(userData).takeUnretainedValue()
                 DispatchQueue.main.async { manager.onActivate?() }
                 return noErr

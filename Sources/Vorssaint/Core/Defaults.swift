@@ -25,6 +25,7 @@ enum DefaultsKey {
     static let keepAwakeShortcut = "keepAwakeShortcut"    // GlobalShortcut storage value
     static let keepAwakeIconTint = "keepAwakeIconTint"    // KeepAwakeIconTint.rawValue
     static let showCountdown = "showCountdownInMenuBar"
+    static let statusItemPlacementGeneration = "statusItemPlacementGeneration"
     static let hasOnboarded = "hasOnboarded"
     static let sleepDisabledFlag = "vorssDisabledSleep"   // internal guard for pmset disablesleep
     static let scrollInverterEnabled = "scrollInverterEnabled"
@@ -35,6 +36,8 @@ enum DefaultsKey {
     static let switcherMergeTabs = "switcherMergeTabs"     // show one switcher entry per app (collapse all of an app's windows)
     static let switcherShowWindowlessFinder = "switcherShowWindowlessFinder"
     static let dockPreviewEnabled = "dockPreviewEnabled"
+    static let dockClickMinimize = "dockClickMinimize"    // click the active app's Dock icon to minimize its windows
+    static let middleClickEnabled = "middleClickEnabled"  // three-finger PHYSICAL click on the trackpad acts as a middle click (no tap mode, owner decision)
     static let previewSize = "previewSize"                // app switcher + dock preview thumbnail size
     static let autoCheckUpdates = "autoCheckUpdates"
     static let releaseNotesOnUpdate = "releaseNotesOnUpdate" // show What's New after an update
@@ -73,6 +76,12 @@ enum DefaultsKey {
     static let panelControlShelf = "panelControlShelf"
     static let panelControlWindowMaximize = "panelControlWindowMaximize"
     static let panelControlKeyDebounce = "panelControlKeyDebounce"
+    static let panelControlDockClick = "panelControlDockClick"
+    static let panelControlMiddleClick = "panelControlMiddleClick"
+    // Quick-control categories start collapsed and remember being opened.
+    static let panelControlWindowsExpanded = "panelControlWindowsExpanded"
+    static let panelControlInputExpanded = "panelControlInputExpanded"
+    static let panelControlFilesExpanded = "panelControlFilesExpanded"
     // Show/hide whole panel sections that have no monitorShow* key of their own.
     static let panelShowKeepAwake = "panelShowKeepAwake"
     static let panelShowUtilities = "panelShowUtilities"
@@ -189,6 +198,27 @@ enum DefaultsKey {
     static let clipboardHistoryEntries = "clipboardHistoryEntries"
     static let clipboardHistoryLimit = "clipboardHistoryLimit"
     static let clipboardHistorySkipSensitive = "clipboardHistorySkipSensitive"
+    static let clipboardHistoryIncludeImagesFiles = "clipboardHistoryIncludeImagesFiles" // capture copied images and files too
+    // Quick tools: paste as plain text, color picker, screen OCR, mic mute.
+    static let pastePlainEnabled = "pastePlainEnabled"
+    static let pastePlainShortcut = "pastePlainShortcut"
+    static let colorPickerShortcutEnabled = "colorPickerShortcutEnabled"
+    static let colorPickerShortcut = "colorPickerShortcut"
+    static let colorPickerFormat = "colorPickerFormat"       // hex | rgb | hsl | swiftui
+    static let screenOCRShortcutEnabled = "screenOCRShortcutEnabled"
+    static let screenOCRShortcut = "screenOCRShortcut"
+    static let micMuteShortcutEnabled = "micMuteShortcutEnabled"
+    static let micMuteShortcut = "micMuteShortcut"
+    static let micMuteActive = "micMuteActive"               // mic muted by the app (survives relaunch)
+    static let micMuteSavedVolume = "micMuteSavedVolume"     // input volume to restore on unmute
+    static let quickLauncherShortcutEnabled = "quickLauncherShortcutEnabled"
+    static let quickLauncherShortcut = "quickLauncherShortcut"
+    static let quickLauncherItemOrder = "quickLauncherItemOrder"
+    static let quickLauncherHiddenItems = "quickLauncherHiddenItems"
+    static let panelUtilityQuickLauncher = "panelUtilityQuickLauncher"
+    static let panelUtilityColorPicker = "panelUtilityColorPicker"
+    static let panelUtilityScreenOCR = "panelUtilityScreenOCR"
+    static let panelUtilityMicMute = "panelUtilityMicMute"
     static let clipboardHistoryShortcutEnabled = "clipboardHistoryShortcutEnabled"
     static let clipboardHistoryShortcut = "clipboardHistoryShortcut"
 
@@ -205,6 +235,12 @@ enum DefaultsKey {
     static let windowLayoutShortcutMaximize = "windowLayoutShortcutMaximize"
     static let windowLayoutShortcutCenter = "windowLayoutShortcutCenter"
     static let windowLayoutShortcutRestore = "windowLayoutShortcutRestore"
+    static let windowLayoutShortcutLeftThird = "windowLayoutShortcutLeftThird"
+    static let windowLayoutShortcutCenterThird = "windowLayoutShortcutCenterThird"
+    static let windowLayoutShortcutRightThird = "windowLayoutShortcutRightThird"
+    static let windowLayoutShortcutLeftTwoThirds = "windowLayoutShortcutLeftTwoThirds"
+    static let windowLayoutShortcutRightTwoThirds = "windowLayoutShortcutRightTwoThirds"
+    static let windowLayoutShortcutNextDisplay = "windowLayoutShortcutNextDisplay"
 
     // Dev-build only: force the "update available" UI for local testing.
     static let simulateUpdate = "simulateUpdate"
@@ -274,7 +310,7 @@ enum Defaults {
     static let allowedKeepAwakeMouseJiggleIntervals = [1, 2, 5, 10, 15]
     static let allowedBatteryLimits = [0, 5, 10, 15, 20]
     static let allowedMonitorIntervals = [1, 2, 5]
-    static let defaultKeyboardDebounceWindowMs = 10
+    static let defaultKeyboardDebounceWindowMs = 5
     static let allowedKeyboardDebounceWindowRange = 0...500
     static let allowedMenuBarPresets = ["dense"]
     static let defaultMenuBarMetricOrder = [
@@ -309,6 +345,8 @@ enum Defaults {
         DefaultsKey.switcherMergeTabs: false,
         DefaultsKey.switcherShowWindowlessFinder: true,
         DefaultsKey.dockPreviewEnabled: false,
+        DefaultsKey.dockClickMinimize: false,
+        DefaultsKey.middleClickEnabled: false,
         DefaultsKey.previewSize: "normal",
         DefaultsKey.autoCheckUpdates: true,
         DefaultsKey.releaseNotesOnUpdate: true,
@@ -345,6 +383,11 @@ enum Defaults {
         DefaultsKey.panelControlShelf: true,
         DefaultsKey.panelControlWindowMaximize: true,
         DefaultsKey.panelControlKeyDebounce: true,
+        DefaultsKey.panelControlDockClick: true,
+        DefaultsKey.panelControlMiddleClick: true,
+        DefaultsKey.panelControlWindowsExpanded: false,
+        DefaultsKey.panelControlInputExpanded: false,
+        DefaultsKey.panelControlFilesExpanded: false,
         DefaultsKey.panelShowKeepAwake: true,
         DefaultsKey.panelShowUtilities: true,
         DefaultsKey.panelShowControls: true,
@@ -434,6 +477,25 @@ enum Defaults {
         DefaultsKey.clipboardHistoryEnabled: false,
         DefaultsKey.clipboardHistoryLimit: 50,
         DefaultsKey.clipboardHistorySkipSensitive: true,
+        DefaultsKey.clipboardHistoryIncludeImagesFiles: true,
+        DefaultsKey.pastePlainEnabled: false,
+        DefaultsKey.pastePlainShortcut: GlobalShortcut.pastePlainDefault.storageValue,
+        DefaultsKey.colorPickerShortcutEnabled: false,
+        DefaultsKey.colorPickerShortcut: GlobalShortcut.colorPickerDefault.storageValue,
+        DefaultsKey.colorPickerFormat: "hex",
+        DefaultsKey.screenOCRShortcutEnabled: false,
+        DefaultsKey.screenOCRShortcut: GlobalShortcut.screenOCRDefault.storageValue,
+        DefaultsKey.micMuteShortcutEnabled: false,
+        DefaultsKey.micMuteShortcut: GlobalShortcut.micMuteDefault.storageValue,
+        DefaultsKey.micMuteActive: false,
+        DefaultsKey.micMuteSavedVolume: 0.75,
+        DefaultsKey.quickLauncherShortcutEnabled: true,
+        DefaultsKey.quickLauncherShortcut: GlobalShortcut.quickLauncherDefault.storageValue,
+        DefaultsKey.quickLauncherHiddenItems: "",
+        DefaultsKey.panelUtilityQuickLauncher: true,
+        DefaultsKey.panelUtilityColorPicker: true,
+        DefaultsKey.panelUtilityScreenOCR: true,
+        DefaultsKey.panelUtilityMicMute: true,
         DefaultsKey.clipboardHistoryShortcutEnabled: true,
         DefaultsKey.clipboardHistoryShortcut: GlobalShortcut.clipboardDefault.storageValue,
         DefaultsKey.windowLayoutShortcutsEnabled: false,
@@ -448,6 +510,12 @@ enum Defaults {
         DefaultsKey.windowLayoutShortcutMaximize: GlobalShortcut.windowLayoutMaximizeDefault.storageValue,
         DefaultsKey.windowLayoutShortcutCenter: GlobalShortcut.windowLayoutCenterDefault.storageValue,
         DefaultsKey.windowLayoutShortcutRestore: GlobalShortcut.windowLayoutRestoreDefault.storageValue,
+        DefaultsKey.windowLayoutShortcutLeftThird: GlobalShortcut.windowLayoutLeftThirdDefault.storageValue,
+        DefaultsKey.windowLayoutShortcutCenterThird: GlobalShortcut.windowLayoutCenterThirdDefault.storageValue,
+        DefaultsKey.windowLayoutShortcutRightThird: GlobalShortcut.windowLayoutRightThirdDefault.storageValue,
+        DefaultsKey.windowLayoutShortcutLeftTwoThirds: GlobalShortcut.windowLayoutLeftTwoThirdsDefault.storageValue,
+        DefaultsKey.windowLayoutShortcutRightTwoThirds: GlobalShortcut.windowLayoutRightTwoThirdsDefault.storageValue,
+        DefaultsKey.windowLayoutShortcutNextDisplay: GlobalShortcut.windowLayoutNextDisplayDefault.storageValue,
     ]
 
     static func register() {
@@ -469,7 +537,8 @@ enum Defaults {
     }
 
     static func migrateLegacyKeyboardDebounceWindow(in defaults: UserDefaults) {
-        guard defaults.object(forKey: DefaultsKey.keyboardDebounceWindowMs) as? Int == 30,
+        guard let storedWindow = defaults.object(forKey: DefaultsKey.keyboardDebounceWindowMs) as? Int,
+              storedWindow == 30 || storedWindow == 10,
               defaults.bool(forKey: DefaultsKey.keyboardDebounceEnabled) == false,
               (defaults.string(forKey: DefaultsKey.keyboardDebounceKeyWindows) ?? "").isEmpty
         else { return }

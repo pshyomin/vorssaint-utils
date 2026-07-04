@@ -67,7 +67,8 @@ final class SoundOutputSwitcher: ObservableObject {
                                       EventParamType(typeEventHotKeyID), nil,
                                       MemoryLayout<EventHotKeyID>.size, nil, &id)
                 }
-                guard id.id == 4 else { return OSStatus(eventNotHandledErr) }
+                guard id.signature == 0x5655_534F, id.id == 4
+                else { return OSStatus(eventNotHandledErr) }
                 let service = Unmanaged<SoundOutputSwitcher>.fromOpaque(userData).takeUnretainedValue()
                 DispatchQueue.main.async { service.switchToNextOutput() }
                 return noErr

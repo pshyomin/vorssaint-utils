@@ -93,8 +93,10 @@ final class AppSwitcher: ObservableObject {
             // the first ⌘Tab.
             let panel = ensurePanel()
             panel.contentViewController?.view.layoutSubtreeIfNeeded()
+            WindowPreviewProvider.shared.startWarming()
         } else {
             removeTap()
+            WindowPreviewProvider.shared.stopWarming()
         }
     }
 

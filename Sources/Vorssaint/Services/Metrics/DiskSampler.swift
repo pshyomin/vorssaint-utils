@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright (C) 2026 Vorssaint
 
+import Darwin
 import Foundation
 import IOKit
 
@@ -20,14 +21,23 @@ final class DiskSampler {
 
     private var previous: [String: (counters: DiskIOCounters, time: TimeInterval)] = [:]
     private var sessionTotals: [String: DiskIOCounters] = [:]
-    private var metadataCache: [String: (metadata: DiskMetadata, updatedAt: TimeInterval)] = [:]
+    private var metadataCache: [String: (metadata: DiskMetadata, updatedAt: TimeInterval, isFull: Bool)] = [:]
     private static let metadataRefreshInterval: TimeInterval = 30
-    private static let maxGap: TimeInterval = 10
+    /// Panel closed: identity metadata only changes on (re)mount, so a full
+    /// lookup stays reusable for a long time; the hourly re-run self-heals
+    /// remounts that swapped BSD names while the panel never opened.
+    private static let backgroundMetadataRefreshInterval: TimeInterval = 3600
+    /// Widest sample gap that still yields a rate: must clear the slowest
+    /// background disk cadence (10 s nominal) plus the timer's tolerance and
+    /// scheduling slop, or roughly half the background samples get discarded
+    /// and their bytes vanish from the session totals. Sleep/pause gaps are
+    /// minutes long and still fall outside.
+    private static let maxGap: TimeInterval = 15
 
-    func sample(now: TimeInterval) -> DiskReading {
+    func sample(now: TimeInterval, refreshMetadata: Bool = true) -> DiskReading {
         let counters = Self.readCounters()
         let devices = Self.mountedVolumes().map { volume -> DiskDeviceReading in
-            let metadata = metadata(for: volume.mountPath, now: now)
+            let metadata = metadata(for: volume, now: now, refresh: refreshMetadata)
             let wholeDisk = metadata.wholeDisk
             let counter = Self.bestCounter(from: metadata.ioCounterIDs, counters: counters)
             let ioCounters = counter?.counters ?? DiskIOCounters()
@@ -106,13 +116,27 @@ final class DiskSampler {
         return (speed.read, speed.write, totals.read, totals.written)
     }
 
-    private func metadata(for mountPath: String, now: TimeInterval) -> DiskMetadata {
-        if let cached = metadataCache[mountPath],
-           now - cached.updatedAt < Self.metadataRefreshInterval {
+    private func metadata(for volume: MountedVolume, now: TimeInterval, refresh: Bool) -> DiskMetadata {
+        if let cached = metadataCache[volume.mountPath],
+           now - cached.updatedAt < Self.metadataRefreshInterval,
+           cached.isFull || !refresh {
             return cached.metadata
         }
-        let metadata = Self.diskutilInfo(for: mountPath)
-        metadataCache[mountPath] = (metadata, now)
+        // Panel closed: keep reusing the last full lookup instead of building a
+        // lightweight identity. Synthesized APFS BSD names carry no
+        // IOBlockStorageDriver statistics (they live on the physical store, e.g.
+        // disk0), so a lightweight identity would zero the IO metric and fork
+        // session totals under a new disk ID. Capacity stays fresh either way —
+        // bestCapacity prefers the statfs volume values. A background cold start
+        // pays a single diskutil run per volume.
+        if !refresh,
+           let cached = metadataCache[volume.mountPath],
+           cached.isFull,
+           now - cached.updatedAt < Self.backgroundMetadataRefreshInterval {
+            return cached.metadata
+        }
+        let metadata = Self.diskutilInfo(for: volume.mountPath)
+        metadataCache[volume.mountPath] = (metadata, now, true)
         return metadata
     }
 
@@ -132,6 +156,7 @@ final class DiskSampler {
         var isInternal: Bool
         var isRemovable: Bool
         var isEjectable: Bool
+        var bsdName: String?
     }
 
     private static func mountedVolumes() -> [MountedVolume] {
@@ -169,7 +194,21 @@ final class DiskSampler {
                                  usedBytes: total - min(free, total),
                                  isInternal: values.volumeIsInternal ?? false,
                                  isRemovable: values.volumeIsRemovable ?? false,
-                                 isEjectable: values.volumeIsEjectable ?? false)
+                                 isEjectable: values.volumeIsEjectable ?? false,
+                                 bsdName: bsdName(for: url.path))
+        }
+    }
+
+    private static func bsdName(for mountPath: String) -> String? {
+        var fs = statfs()
+        guard statfs(mountPath, &fs) == 0 else { return nil }
+        return withUnsafeBytes(of: fs.f_mntfromname) { rawBuffer -> String? in
+            guard let base = rawBuffer.baseAddress?.assumingMemoryBound(to: CChar.self) else {
+                return nil
+            }
+            let value = String(cString: base)
+            let trimmed = value.replacingOccurrences(of: "/dev/", with: "")
+            return trimmed.hasPrefix("disk") ? trimmed : nil
         }
     }
 

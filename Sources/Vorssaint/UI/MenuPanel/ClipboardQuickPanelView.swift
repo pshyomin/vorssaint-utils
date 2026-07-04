@@ -171,22 +171,24 @@ struct ClipboardQuickPanelView: View {
                           isBatchSelected: Bool,
                           isHovered: Bool) -> some View {
         HStack(alignment: .top, spacing: 9) {
-            Button {
-                history.toggleQuickBatchSelection(entry)
-            } label: {
+            if entry.kind == .text {
+                Button {
+                    history.toggleQuickBatchSelection(entry)
+                } label: {
+                    leadingMarker(entry: entry,
+                                  shortcutIndex: shortcutIndex,
+                                  isBatchSelected: isBatchSelected)
+                }
+                .buttonStyle(.plain)
+                .help(isBatchSelected ? text.unselectMultiple : text.selectMultiple)
+            } else {
                 leadingMarker(entry: entry,
                               shortcutIndex: shortcutIndex,
-                              isBatchSelected: isBatchSelected)
+                              isBatchSelected: false)
             }
-            .buttonStyle(.plain)
-            .help(isBatchSelected ? text.unselectMultiple : text.selectMultiple)
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(entry.preview)
-                    .font(.system(size: 11.5))
-                    .lineLimit(3)
-                    .truncationMode(.tail)
-                    .help(entry.preview)
+                entryContent(entry)
                 HStack(spacing: 7) {
                     Text(entry.copiedAt, style: .time)
                         .font(.system(size: 9.5))
@@ -279,6 +281,79 @@ struct ClipboardQuickPanelView: View {
     }
 
     @ViewBuilder
+    private func entryContent(_ entry: ClipboardHistoryEntry) -> some View {
+        switch entry.kind {
+        case .text:
+            Text(entry.preview)
+                .font(.system(size: 11.5))
+                .lineLimit(3)
+                .truncationMode(.tail)
+                .help(entry.preview)
+        case .image:
+            HStack(alignment: .center, spacing: 8) {
+                if let name = entry.imageFile,
+                   let thumbnail = ClipboardImageStore.thumbnail(named: name) {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 150, maxHeight: 54)
+                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                }
+                Text("\(text.imageEntryLabel) · \(entry.imageDimensionsLabel)")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+            }
+            .help("\(text.imageEntryLabel) · \(entry.imageDimensionsLabel)")
+        case .files:
+            HStack(alignment: .center, spacing: 8) {
+                fileIcon(entry)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(fileTitle(entry))
+                        .font(.system(size: 11.5))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if entry.filePaths.count > 1 {
+                        Text(entry.preview)
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(2)
+                            .truncationMode(.tail)
+                    }
+                }
+            }
+            .help(entry.filePaths.joined(separator: "\n"))
+        }
+    }
+
+    private func fileTitle(_ entry: ClipboardHistoryEntry) -> String {
+        if entry.filePaths.count == 1 {
+            return entry.fileNames.first ?? entry.preview
+        }
+        return String(format: text.fileCountFormat, entry.filePaths.count)
+    }
+
+    private func fileIcon(_ entry: ClipboardHistoryEntry) -> some View {
+        let icon: NSImage?
+        if let path = entry.filePaths.first(where: { FileManager.default.fileExists(atPath: $0) }) {
+            icon = NSWorkspace.shared.icon(forFile: path)
+        } else {
+            icon = nil
+        }
+        return Group {
+            if let icon {
+                Image(nsImage: icon)
+                    .resizable()
+                    .frame(width: 22, height: 22)
+            } else {
+                Image(systemName: "folder")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22, height: 22)
+            }
+        }
+    }
+
+    @ViewBuilder
     private func leadingMarker(entry: ClipboardHistoryEntry,
                                shortcutIndex: Int?,
                                isBatchSelected: Bool) -> some View {
@@ -301,11 +376,19 @@ struct ClipboardQuickPanelView: View {
                         .fill(Color.primary.opacity(0.07))
                 )
         } else {
-            Image(systemName: entry.isPinned ? "pin.fill" : "doc.text")
+            Image(systemName: entry.isPinned ? "pin.fill" : kindSymbol(entry.kind))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(entry.isPinned ? Color.accentColor : Color.secondary)
                 .opacity(entry.isPinned ? 1 : 0.65)
                 .frame(width: 32, height: 24)
+        }
+    }
+
+    private func kindSymbol(_ kind: ClipboardHistoryEntryKind) -> String {
+        switch kind {
+        case .text: return "doc.text"
+        case .image: return "photo"
+        case .files: return "folder"
         }
     }
 

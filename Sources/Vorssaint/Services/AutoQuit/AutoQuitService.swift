@@ -40,13 +40,6 @@ final class AutoQuitService: ObservableObject {
         kAXMainWindowChangedNotification as String,
         kAXFocusedWindowChangedNotification as String
     ])
-    private static let windowLossNotifications = Set([
-        kAXUIElementDestroyedNotification as String,
-        kAXMainWindowChangedNotification as String,
-        kAXFocusedWindowChangedNotification as String,
-        kAXApplicationDeactivatedNotification as String,
-        kAXApplicationHiddenNotification as String
-    ])
 
     private var running = false
     private var observers: [pid_t: AXObserver] = [:]
@@ -182,12 +175,39 @@ final class AutoQuitService: ObservableObject {
         if Self.windowRefreshNotifications.contains(notification), let observer = observers[pid] {
             refreshWindows(pid: pid, observer: observer)
         }
-        if Self.windowLossNotifications.contains(notification) {
-            // A close-to-background app can hide its last window without
-            // destroying the AX element, so re-check on focus/main/visibility
-            // changes as well as destroyed-window callbacks.
+        let event = Self.autoQuitEvent(for: notification)
+        if AutoQuitSupport.shouldScheduleWindowCheck(for: event,
+                                                     hasRecentCloseRequest: hasRecentCloseButtonRequest(pid: pid)) {
             scheduleWindowCheck(pid: pid)
         }
+    }
+
+    private static func autoQuitEvent(for notification: String) -> AutoQuitWindowEvent {
+        if notification == (kAXUIElementDestroyedNotification as String) {
+            return .windowDestroyed
+        }
+        if notification == (kAXApplicationHiddenNotification as String) {
+            return .appHidden
+        }
+        if notification == (kAXApplicationDeactivatedNotification as String) {
+            return .appDeactivated
+        }
+        if notification == (kAXMainWindowChangedNotification as String) {
+            return .mainWindowChanged
+        }
+        if notification == (kAXFocusedWindowChangedNotification as String) {
+            return .focusedWindowChanged
+        }
+        if notification == (kAXWindowCreatedNotification as String) {
+            return .windowCreated
+        }
+        if notification == (kAXWindowDeminiaturizedNotification as String) {
+            return .windowDeminiaturized
+        }
+        if notification == (kAXApplicationShownNotification as String) {
+            return .appShown
+        }
+        return .other
     }
 
     private func scheduleWindowCheck(pid: pid_t) {
@@ -199,21 +219,32 @@ final class AutoQuitService: ObservableObject {
     private func checkWindows(pid: pid_t, confirm: Bool = true) {
         guard running, hadWindows[pid] == true,
               let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated else { return }
-        if let bundleID = app.bundleIdentifier, exceptions.contains(bundleID) { return }
+        let appIsExcepted = app.bundleIdentifier.map { exceptions.contains($0) } ?? false
         let recentClose = hasRecentCloseButtonRequest(pid: pid)
         let hiddenByCloseRequest = app.isHidden && recentClose
+
+        // Cheap early-outs before any synchronous AX IPC: excepted apps and
+        // hidden apps without close intent can never quit below.
+        guard !appIsExcepted else { return }
         if app.isHidden && !hiddenByCloseRequest { return }
 
         let appElement = AXUIElementCreateApplication(pid)
-        if hasKnownMinimizedWindow(pid: pid, appElement: appElement) { return }
+        let hasMinimizedWindow = hasKnownMinimizedWindow(pid: pid, appElement: appElement)
         // After an explicit close-button click, ignore off-screen titled windows
         // for ALL apps, not just hidden ones. Chromium/Electron apps especially
         // keep a titled helper/background window parked off-screen (or on another
         // Space) after the visible window closes; counting it kept the app alive
         // forever. Clicking the close button is the clear "I'm done here" signal.
-        guard !hasUserFacingWindow(pid: pid,
-                                   appElement: appElement,
-                                   includeOffscreenTitled: !recentClose) else { return }
+        let hasVisibleWindow = hasUserFacingWindow(pid: pid,
+                                                   appElement: appElement,
+                                                   includeOffscreenTitled: !recentClose)
+        guard AutoQuitSupport.shouldQuitAfterWindowCheck(hadWindows: true,
+                                                         appIsTerminated: false,
+                                                         appIsExcepted: appIsExcepted,
+                                                         appIsHidden: app.isHidden,
+                                                         hiddenByCloseRequest: hiddenByCloseRequest,
+                                                         hasKnownMinimizedWindow: hasMinimizedWindow,
+                                                         hasUserFacingWindow: hasVisibleWindow) else { return }
 
         // Zero windows can be a transient state, most notably when leaving full
         // screen with the green button: the full-screen window is destroyed a
@@ -229,11 +260,17 @@ final class AutoQuitService: ObservableObject {
 
         let stillRecentClose = hasRecentCloseButtonRequest(pid: pid)
         let stillHiddenByCloseRequest = app.isHidden && stillRecentClose
-        if app.isHidden && !stillHiddenByCloseRequest { return }
-        if hasKnownMinimizedWindow(pid: pid, appElement: appElement) { return }
-        guard !hasUserFacingWindow(pid: pid,
-                                   appElement: appElement,
-                                   includeOffscreenTitled: !stillRecentClose) else { return }
+        let stillHasKnownMinimizedWindow = hasKnownMinimizedWindow(pid: pid, appElement: appElement)
+        let stillHasUserFacingWindow = hasUserFacingWindow(pid: pid,
+                                                           appElement: appElement,
+                                                           includeOffscreenTitled: !stillRecentClose)
+        guard AutoQuitSupport.shouldQuitAfterWindowCheck(hadWindows: true,
+                                                         appIsTerminated: app.isTerminated,
+                                                         appIsExcepted: appIsExcepted,
+                                                         appIsHidden: app.isHidden,
+                                                         hiddenByCloseRequest: stillHiddenByCloseRequest,
+                                                         hasKnownMinimizedWindow: stillHasKnownMinimizedWindow,
+                                                         hasUserFacingWindow: stillHasUserFacingWindow) else { return }
 
         hadWindows[pid] = false
         recentCloseButtonRequests[pid] = nil
@@ -375,6 +412,7 @@ final class AutoQuitService: ObservableObject {
     private func startCloseRequestMonitor() {
         guard closeRequestTap == nil else { return }
         let mask = CGEventMask(1 << CGEventType.leftMouseDown.rawValue)
+            | CGEventMask(1 << CGEventType.keyDown.rawValue)
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .tailAppendEventTap,
@@ -412,6 +450,11 @@ final class AutoQuitService: ObservableObject {
             return Unmanaged.passUnretained(event)
         }
 
+        if type == .keyDown {
+            handleCloseRequestKeyDown(event: event)
+            return Unmanaged.passUnretained(event)
+        }
+
         // Accessibility gone (e.g. reset): the AX hit-test below would hang
         // inside the tap and freeze clicks, so let the click through untouched.
         guard AXIsProcessTrusted() else { return Unmanaged.passUnretained(event) }
@@ -428,6 +471,41 @@ final class AutoQuitService: ObservableObject {
         }
         markCloseButtonRequest(pid: pid)
         return Unmanaged.passUnretained(event)
+    }
+
+    private func handleCloseRequestKeyDown(event: CGEvent) {
+        let flags = event.flags
+        guard flags.contains(.maskCommand), !flags.contains(.maskControl) else { return }
+        // Match the character the key actually types under the current layout
+        // (virtual key codes are positional: 13 types "z" on AZERTY). Fall back
+        // to the QWERTY key code when no character is available.
+        let isCloseShortcut: Bool
+        if let character = Self.typedCharacter(of: event) {
+            isCloseShortcut = character == "w"
+        } else {
+            isCloseShortcut = AutoQuitSupport.isCommandW(
+                keyCode: event.getIntegerValueField(.keyboardEventKeycode),
+                command: true, control: false)
+        }
+        guard isCloseShortcut,
+              let pid = NSWorkspace.shared.frontmostApplication?.processIdentifier,
+              observers[pid] != nil else { return }
+        // Cmd+W may close only a tab, so it is a weak signal: re-check windows
+        // shortly (a genuinely closed last window fails the check and quits),
+        // but never unlock the hidden-app quit path or the off-screen-window
+        // filter — otherwise closing a tab and hiding the app would terminate
+        // an app whose window (with all its tabs) still exists.
+        scheduleCloseRequestChecks(pid: pid)
+    }
+
+    private static func typedCharacter(of event: CGEvent) -> String? {
+        var length = 0
+        var characters = [UniChar](repeating: 0, count: 4)
+        event.keyboardGetUnicodeString(maxStringLength: characters.count,
+                                       actualStringLength: &length,
+                                       unicodeString: &characters)
+        guard length > 0 else { return nil }
+        return String(utf16CodeUnits: characters, count: length).lowercased()
     }
 
     private func markCloseButtonRequest(pid: pid_t) {

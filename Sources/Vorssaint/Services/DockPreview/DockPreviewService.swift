@@ -123,6 +123,36 @@ final class DockPreviewService: ObservableObject {
         schedulePeekReconcile()
     }
 
+    /// Whether a preview panel (session or pinned) covers the given top-left-
+    /// origin global point. DockClickService asks before treating a click near
+    /// the Dock as an icon click: panels can dip into the Dock's edge band and
+    /// their card clicks must stay theirs. Main-thread only, like all panel
+    /// state here.
+    func panelCovers(axPoint: CGPoint) -> Bool {
+        let point = appKitPoint(fromAX: axPoint)
+        if isVisible, activePanelFrame?.contains(point) == true { return true }
+        return pinnedPanelWindows.values.contains { $0.isVisible && $0.frame.contains(point) }
+    }
+
+    /// A Dock icon click was handled — and swallowed — by DockClickService, so
+    /// the listen-only tap here never sees that mouseDown. Mirror what a native
+    /// Dock click does to the session; without this the panel stays open with a
+    /// pre-click idea of which windows are minimized, and a later hover peek
+    /// would happily pull a just-minimized window back out.
+    func dockClickWasHandled() {
+        cancelPendingHover()
+        guard isVisible else { return }
+        let decision = DockPreviewSupport.mouseDownDecision(isVisible: isVisible,
+                                                            isPinned: isPinned,
+                                                            isInsidePanel: false,
+                                                            clickedDock: true)
+        if decision.shouldEndSession {
+            endSession(restore: decision.restoreOrigin)
+        } else {
+            cancelPendingHide()
+        }
+    }
+
     func endPreview(_ item: SwitcherItem) {
         guard isVisible else { return }
         // Only the card that currently owns the peek may release it. If the
@@ -154,6 +184,23 @@ final class DockPreviewService: ObservableObject {
         guard targetWindowID != activePeekWindowID else { return }
 
         if let item = desiredPeek {
+            // A minimized window is only pulled out by an explicit click, never
+            // by a hover. The card can also go stale while the panel is open
+            // (the window can minimize underneath us — ⌘M, another utility…),
+            // so trust a live check over the captured item.
+            if let windowID = item.windowID,
+               item.isMinimized || WindowActivator.windowIsMinimized(windowID: windowID, pid: item.pid) {
+                if !item.isMinimized {
+                    windows = windows.map {
+                        $0.windowID == windowID ? $0.withMinimized(true) : $0
+                    }
+                }
+                if activePeekWindowID != nil {
+                    activePeekWindowID = nil
+                    restoreOrigin(retry: false)
+                }
+                return
+            }
             recordTouch(item)
             activePeekWindowID = item.windowID
             WindowActivator.activate(item, retry: false)

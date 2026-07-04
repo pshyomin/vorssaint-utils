@@ -5,24 +5,71 @@ import Foundation
 import IOKit
 
 final class PeripheralBatterySampler {
+    private let lock = NSLock()
+    private let bluetoothQueue = DispatchQueue(label: "com.vorssaint.peripheral-battery.bluetooth", qos: .utility)
     private var cachedDevices: [PeripheralBatteryDevice] = []
     private var cachedAt: TimeInterval = 0
-    private let cacheInterval: TimeInterval = 3
+    private var cachedBluetoothDevices: [PeripheralBatteryDevice] = []
+    private var bluetoothStartedAt: TimeInterval = -.greatestFiniteMagnitude
+    private var bluetoothFinishedAt: TimeInterval = -.greatestFiniteMagnitude
+    private var bluetoothRefreshRunning = false
+    private let fastCacheInterval: TimeInterval = 15
+    private let bluetoothCacheInterval: TimeInterval = 300
 
     func sample(now: TimeInterval) -> [PeripheralBatteryDevice] {
-        if now - cachedAt < cacheInterval {
-            return cachedDevices
+        startBluetoothRefreshIfNeeded(now: now)
+
+        lock.lock()
+        if now - cachedAt < fastCacheInterval {
+            let devices = cachedDevices
+            lock.unlock()
+            return devices
         }
-        let devices = Self.readDevices()
+        let bluetoothDevices = cachedBluetoothDevices
+        lock.unlock()
+
+        let devices = Self.uniqueDevices(from: Self.readFastDevices() + bluetoothDevices)
+
+        lock.lock()
         cachedDevices = devices
         cachedAt = now
+        lock.unlock()
+
         return devices
     }
 
-    private static func readDevices() -> [PeripheralBatteryDevice] {
+    private func startBluetoothRefreshIfNeeded(now: TimeInterval) {
+        lock.lock()
+        guard PeripheralBatteryRefreshPolicy.shouldStartBluetoothRefresh(
+            now: now,
+            lastStartedAt: bluetoothStartedAt,
+            lastFinishedAt: bluetoothFinishedAt,
+            isRunning: bluetoothRefreshRunning,
+            interval: bluetoothCacheInterval
+        ) else {
+            lock.unlock()
+            return
+        }
+        bluetoothRefreshRunning = true
+        bluetoothStartedAt = now
+        lock.unlock()
+
+        bluetoothQueue.async { [weak self] in
+            let devices = Self.readBluetoothSystemProfilerDevices()
+            let finishedAt = ProcessInfo.processInfo.systemUptime
+            guard let self else { return }
+            lock.lock()
+            cachedBluetoothDevices = devices
+            bluetoothFinishedAt = finishedAt
+            bluetoothRefreshRunning = false
+            cachedAt = -.greatestFiniteMagnitude
+            lock.unlock()
+        }
+    }
+
+    private static func readFastDevices() -> [PeripheralBatteryDevice] {
         let devices = readMatchingServices(named: "AppleDeviceManagementHIDEventService")
             + readMatchingServices(named: "IOHIDDevice")
-            + readBluetoothSystemProfilerDevices()
         return uniqueDevices(from: devices)
     }
 

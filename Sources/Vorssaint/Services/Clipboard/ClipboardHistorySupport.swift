@@ -3,6 +3,121 @@
 
 import Foundation
 
+enum ClipboardHistoryEntryKind: String, Codable {
+    case text
+    case image
+    case files
+}
+
+struct ClipboardHistoryEntry: Codable, Equatable, Identifiable {
+    let id: UUID
+    /// The content for text entries; empty for images and files, whose display
+    /// strings are derived so they never go stale in storage.
+    let text: String
+    var copiedAt: Date
+    var pinnedAt: Date?
+    let kind: ClipboardHistoryEntryKind
+    /// Absolute paths for `.files` entries, in the order they were copied.
+    let filePaths: [String]
+    /// PNG file name inside the clipboard image store for `.image` entries.
+    let imageFile: String?
+    /// SHA-256 of the PNG data, so re-copying the same image refreshes the
+    /// existing entry instead of storing a duplicate file.
+    let imageHash: String?
+    let imageWidth: Int?
+    let imageHeight: Int?
+
+    init(id: UUID = UUID(),
+         text: String,
+         copiedAt: Date = Date(),
+         pinnedAt: Date? = nil,
+         kind: ClipboardHistoryEntryKind = .text,
+         filePaths: [String] = [],
+         imageFile: String? = nil,
+         imageHash: String? = nil,
+         imageWidth: Int? = nil,
+         imageHeight: Int? = nil) {
+        self.id = id
+        self.text = text
+        self.copiedAt = copiedAt
+        self.pinnedAt = pinnedAt
+        self.kind = kind
+        self.filePaths = filePaths
+        self.imageFile = imageFile
+        self.imageHash = imageHash
+        self.imageWidth = imageWidth
+        self.imageHeight = imageHeight
+    }
+
+    var isPinned: Bool {
+        pinnedAt != nil
+    }
+
+    var fileNames: [String] {
+        filePaths.map { ($0 as NSString).lastPathComponent }
+    }
+
+    var imageDimensionsLabel: String {
+        guard let imageWidth, let imageHeight else { return "" }
+        return "\(imageWidth)×\(imageHeight)"
+    }
+
+    var preview: String {
+        switch kind {
+        case .text:
+            let collapsed = text
+                .replacingOccurrences(of: "\n", with: " ")
+                .replacingOccurrences(of: "\t", with: " ")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            return collapsed.isEmpty ? text : collapsed
+        case .image:
+            return imageDimensionsLabel
+        case .files:
+            return fileNames.joined(separator: ", ")
+        }
+    }
+
+    /// Same clipboard content, regardless of when it was copied: re-copying
+    /// refreshes the existing entry instead of duplicating it.
+    func matchesContent(of other: ClipboardHistoryEntry) -> Bool {
+        guard kind == other.kind else { return false }
+        switch kind {
+        case .text: return text == other.text
+        case .image: return imageHash != nil && imageHash == other.imageHash
+        case .files: return filePaths == other.filePaths
+        }
+    }
+
+    /// What the search box can match. Image entries carry the localized label
+    /// plus dimensions so typing "image"/"imagem" finds them.
+    func searchableText(imageLabel: String) -> String {
+        switch kind {
+        case .text: return text
+        case .image: return "\(imageLabel) png \(imageDimensionsLabel)"
+        case .files: return fileNames.joined(separator: " ")
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, text, copiedAt, pinnedAt, kind, filePaths, imageFile, imageHash, imageWidth, imageHeight
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        text = try container.decode(String.self, forKey: .text)
+        copiedAt = try container.decodeIfPresent(Date.self, forKey: .copiedAt) ?? Date()
+        pinnedAt = try container.decodeIfPresent(Date.self, forKey: .pinnedAt)
+        // Histories written before images and files existed decode as text.
+        kind = try container.decodeIfPresent(ClipboardHistoryEntryKind.self, forKey: .kind) ?? .text
+        filePaths = try container.decodeIfPresent([String].self, forKey: .filePaths) ?? []
+        imageFile = try container.decodeIfPresent(String.self, forKey: .imageFile)
+        imageHash = try container.decodeIfPresent(String.self, forKey: .imageHash)
+        imageWidth = try container.decodeIfPresent(Int.self, forKey: .imageWidth)
+        imageHeight = try container.decodeIfPresent(Int.self, forKey: .imageHeight)
+    }
+}
+
 struct ClipboardHistorySearchCandidate {
     var index: Int
     var text: String

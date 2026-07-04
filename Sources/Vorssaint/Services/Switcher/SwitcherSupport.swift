@@ -110,6 +110,110 @@ struct SwitcherShortcutHints: Equatable {
 }
 
 enum SwitcherSupport {
+    /// Grid resolution used to classify window captures.
+    static let captureAlphaGridSize = 8
+
+    /// Downsamples a capture into a small alpha grid for classification.
+    static func alphaGrid(of image: CGImage, gridSize: Int = captureAlphaGridSize) -> [Double]? {
+        guard gridSize > 0 else { return nil }
+        let bytesPerPixel = 4
+        var data = [UInt8](repeating: 0, count: gridSize * gridSize * bytesPerPixel)
+        let drawn = data.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress,
+                                          width: gridSize,
+                                          height: gridSize,
+                                          bitsPerComponent: 8,
+                                          bytesPerRow: gridSize * bytesPerPixel,
+                                          space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            context.interpolationQuality = .low
+            context.draw(image, in: CGRect(x: 0, y: 0, width: CGFloat(gridSize), height: CGFloat(gridSize)))
+            return true
+        }
+        guard drawn else { return nil }
+        return (0..<(gridSize * gridSize)).map { Double(data[$0 * bytesPerPixel + 3]) / 255.0 }
+    }
+
+    /// Whether a window capture looks like Stage Manager's strip rendering
+    /// instead of real window content. Parked windows are captured as a sheared
+    /// snapshot whose bounding box leaves fully transparent wedges in at least
+    /// two corner/edge probes of the downsampled grid; a real window capture is
+    /// opaque edge to edge (rounded corners only shave sub-cell slivers at this
+    /// resolution, alpha stays well above the threshold).
+    static func captureLooksTransformed(alphaGrid: [Double],
+                                        gridSize: Int = captureAlphaGridSize) -> Bool {
+        guard gridSize >= 4, alphaGrid.count == gridSize * gridSize else { return false }
+        let last = gridSize - 1
+        let mid = gridSize / 2
+        let probes = [
+            (0, 0), (0, last), (last, 0), (last, last),
+            (0, mid), (last, mid), (mid, 0), (mid, last),
+        ]
+        let transparent = probes.filter { alphaGrid[$0.0 * gridSize + $0.1] < 0.05 }.count
+        return transparent >= 2
+    }
+
+    /// Corners of the opaque quadrilateral in a capture, in top-left-origin
+    /// pixel coordinates. Stage Manager's strip artwork is the real window
+    /// content under a mild perspective transform; these corners feed the
+    /// perspective correction that recovers an upright preview.
+    struct CaptureQuadCorners: Equatable {
+        var topLeft: CGPoint
+        var topRight: CGPoint
+        var bottomRight: CGPoint
+        var bottomLeft: CGPoint
+    }
+
+    /// Finds the extreme opaque pixels of a capture's alpha channel (one byte
+    /// per pixel, rows from the top). Returns nil when the opaque region is too
+    /// small or degenerate to be window content.
+    static func opaqueQuadCorners(alpha: [UInt8],
+                                  width: Int,
+                                  height: Int,
+                                  threshold: UInt8 = 250) -> CaptureQuadCorners? {
+        guard width > 16, height > 16, alpha.count == width * height else { return nil }
+        var topLeft = (score: Int.max, x: 0, y: 0)
+        var topRight = (score: Int.min, x: 0, y: 0)
+        var bottomRight = (score: Int.min, x: 0, y: 0)
+        var bottomLeft = (score: Int.max, x: 0, y: 0)
+        var opaqueCount = 0
+        for y in 0..<height {
+            let row = y * width
+            for x in 0..<width where alpha[row + x] >= threshold {
+                opaqueCount += 1
+                let sum = x + y
+                let diff = x - y
+                if sum < topLeft.score { topLeft = (sum, x, y) }
+                if diff > topRight.score { topRight = (diff, x, y) }
+                if sum > bottomRight.score { bottomRight = (sum, x, y) }
+                if diff < bottomLeft.score { bottomLeft = (diff, x, y) }
+            }
+        }
+        guard opaqueCount >= (width * height) / 10 else { return nil }
+        let spanX = max(topRight.x, bottomRight.x) - min(topLeft.x, bottomLeft.x)
+        let spanY = max(bottomLeft.y, bottomRight.y) - min(topLeft.y, topRight.y)
+        guard spanX >= width / 2, spanY >= height / 2 else { return nil }
+        return CaptureQuadCorners(topLeft: CGPoint(x: topLeft.x, y: topLeft.y),
+                                  topRight: CGPoint(x: topRight.x, y: topRight.y),
+                                  bottomRight: CGPoint(x: bottomRight.x, y: bottomRight.y),
+                                  bottomLeft: CGPoint(x: bottomLeft.x, y: bottomLeft.y))
+    }
+
+    /// Least-recently-used cache entries beyond `limit`, never counting ids the
+    /// caller is actively refreshing as victims.
+    static func staleCacheVictims(ids: Set<CGWindowID>,
+                                  active: Set<CGWindowID>,
+                                  lastTouched: [CGWindowID: TimeInterval],
+                                  limit: Int) -> [CGWindowID] {
+        let overflow = ids.count - limit
+        guard overflow > 0 else { return [] }
+        return ids.filter { !active.contains($0) }
+            .sorted { (lastTouched[$0] ?? 0) < (lastTouched[$1] ?? 0) }
+            .prefix(overflow)
+            .map { $0 }
+    }
+
     static func shouldNavigateBackwardOnShiftPress(shiftIsNavigationModifier: Bool,
                                                    wasShiftHeld: Bool,
                                                    isShiftHeld: Bool) -> Bool {

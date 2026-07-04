@@ -41,6 +41,13 @@ enum MetricFormat {
         return availableBytes.partialValue >= totalBytes ? 0 : totalBytes - availableBytes.partialValue
     }
 
+    /// Menu bar memory should keep its slot even while a transient sample is
+    /// unavailable, so the status item does not disappear and reappear.
+    static func menuBarMemoryPercent(used: UInt64?, total: UInt64?) -> String {
+        guard let used, let total, total > 0 else { return "--%" }
+        return percent(Double(used) / Double(total))
+    }
+
     // MARK: Byte sizes
 
     /// Splits a byte count into a human value + unit, base-1024.

@@ -138,6 +138,8 @@ struct BrandMark: View {
         if let mark = Self.mark {
             Image(nsImage: mark)
                 .renderingMode(.template)
+                .interpolation(.high)
+                .antialiased(true)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .foregroundStyle(tint)
@@ -153,7 +155,7 @@ struct BrandMark: View {
 }
 
 /// Squircle badge with the mark on the space gradient — the app's face in the
-/// panel header, About tab and onboarding.
+/// About tab and onboarding.
 struct BrandBadge: View {
     var size: CGFloat
 

@@ -163,6 +163,7 @@ struct MetricsTests {
             (.fr, "Presse-papiers", "Disposition des fenêtres", "Utilitaires", "Alertes"),
             (.it, "Appunti", "Layout finestre", "Utilità", "Avvisi"),
             (.ja, "クリップボード", "ウインドウ配置", "ユーティリティ", "アラート"),
+            (.ru, "Буфер обмена", "Раскладка окон", "Утилиты", "Оповещения"),
             (.zhHans, "剪贴板", "窗口布局", "实用工具", "提醒"),
             (.zhTW, "剪貼簿", "視窗排列", "工具程式", "提醒"),
             (.zhHK, "剪貼簿", "視窗排列", "工具", "提示"),
@@ -198,6 +199,63 @@ struct MetricsTests {
         expect(ClipboardHistoryBatch.orderedSelectedIndexes(allIDs: ["a", "b", "c", "d"],
                                                            selectedIDs: Set(["d", "b"])) == [1, 3],
                "clipboard batch preserves the visible history order")
+
+        let legacyClipboardJSON = Data("""
+        [{"text":"hello","copiedAt":700000000}]
+        """.utf8)
+        if let legacy = try? JSONDecoder().decode([ClipboardHistoryEntry].self, from: legacyClipboardJSON) {
+            expect(legacy.count == 1 && legacy[0].kind == .text && legacy[0].text == "hello",
+                   "clipboard histories saved before images and files decode as text")
+        } else {
+            expect(false, "clipboard legacy history decodes")
+        }
+        let imageEntry = ClipboardHistoryEntry(text: "",
+                                               kind: .image,
+                                               imageFile: "a.png",
+                                               imageHash: "h1",
+                                               imageWidth: 1470,
+                                               imageHeight: 956)
+        if let encoded = try? JSONEncoder().encode([imageEntry]),
+           let decoded = try? JSONDecoder().decode([ClipboardHistoryEntry].self, from: encoded) {
+            expect(decoded.first?.kind == .image
+                       && decoded.first?.imageFile == "a.png"
+                       && decoded.first?.imageWidth == 1470,
+                   "clipboard image entries round-trip through storage")
+        } else {
+            expect(false, "clipboard image entry round-trips")
+        }
+        expectEqual(imageEntry.preview, "1470×956",
+                    "clipboard image preview shows the dimensions")
+        expect(imageEntry.searchableText(imageLabel: "Imagem").contains("Imagem"),
+               "clipboard image entries match the localized image word in search")
+        expect(imageEntry.matchesContent(of: ClipboardHistoryEntry(text: "",
+                                                                   kind: .image,
+                                                                   imageFile: "b.png",
+                                                                   imageHash: "h1")),
+               "clipboard image dedupe matches by content hash, not by file")
+        expect(!imageEntry.matchesContent(of: ClipboardHistoryEntry(text: "",
+                                                                    kind: .image,
+                                                                    imageFile: "c.png",
+                                                                    imageHash: "h2")),
+               "clipboard image dedupe rejects different content")
+        expect(!ClipboardHistoryEntry(text: "", kind: .image).matchesContent(
+                   of: ClipboardHistoryEntry(text: "", kind: .image)),
+               "clipboard image dedupe never matches entries without a hash")
+        let filesEntry = ClipboardHistoryEntry(text: "",
+                                               kind: .files,
+                                               filePaths: ["/Users/a/Documents/Report.pdf",
+                                                           "/Users/a/Pictures/Photo.png"])
+        expectEqual(filesEntry.preview, "Report.pdf, Photo.png",
+                    "clipboard files preview lists the file names")
+        expect(filesEntry.searchableText(imageLabel: "Image").contains("Report.pdf"),
+               "clipboard files entries are searchable by file name")
+        expect(filesEntry.matchesContent(of: ClipboardHistoryEntry(text: "",
+                                                                   kind: .files,
+                                                                   filePaths: filesEntry.filePaths)),
+               "clipboard files dedupe matches the same path set")
+        expect(!filesEntry.matchesContent(of: ClipboardHistoryEntry(text: "Report.pdf, Photo.png",
+                                                                    kind: .text)),
+               "clipboard dedupe never crosses kinds")
         expectEqual(ClipboardHistoryPasteboardText.preferredText(webURLString: "http://localhost:3000/page",
                                                                  plainText: "//localhost:3000/page") ?? "",
                     "http://localhost:3000/page",
@@ -288,6 +346,34 @@ struct MetricsTests {
         let menuMetric = PeripheralBatterySupport.menuBarMetric(for: [keyboard, mouse])
         expect(menuMetric?.label == "MOU" && menuMetric?.value == "24%+1",
                "peripheral battery menu metric shows the lowest device and extra count")
+        expect(PeripheralBatteryRefreshPolicy.shouldStartBluetoothRefresh(
+            now: 300,
+            lastStartedAt: -.greatestFiniteMagnitude,
+            lastFinishedAt: -.greatestFiniteMagnitude,
+            isRunning: false,
+            interval: 300
+        ), "peripheral Bluetooth refresh starts when no cache exists")
+        expect(!PeripheralBatteryRefreshPolicy.shouldStartBluetoothRefresh(
+            now: 400,
+            lastStartedAt: 300,
+            lastFinishedAt: 305,
+            isRunning: true,
+            interval: 300
+        ), "peripheral Bluetooth refresh is single-flight")
+        expect(!PeripheralBatteryRefreshPolicy.shouldStartBluetoothRefresh(
+            now: 500,
+            lastStartedAt: 300,
+            lastFinishedAt: 305,
+            isRunning: false,
+            interval: 300
+        ), "peripheral Bluetooth refresh respects its cache interval")
+        expect(PeripheralBatteryRefreshPolicy.shouldStartBluetoothRefresh(
+            now: 606,
+            lastStartedAt: 300,
+            lastFinishedAt: 305,
+            isRunning: false,
+            interval: 300
+        ), "peripheral Bluetooth refresh runs again only after the interval")
 
         // MARK: Keyboard debounce
 
@@ -295,23 +381,107 @@ struct MetricsTests {
         let debounceConfig = KeyboardDebounceConfig(enabled: true,
                                                     globalWindowMs: 50,
                                                     keyWindows: [:])
-        expect(!debounceState.shouldSuppress(keyCode: 37, isAutoRepeat: false, time: 10.00, config: debounceConfig),
+        func debounceDown(_ keyCode: Int64,
+                          at time: TimeInterval,
+                          repeat isAutoRepeat: Bool = false,
+                          config: KeyboardDebounceConfig) -> Bool {
+            debounceState.shouldSuppress(keyCode: keyCode,
+                                         isAutoRepeat: isAutoRepeat,
+                                         event: .keyDown,
+                                         time: time,
+                                         config: config)
+        }
+        func debounceUp(_ keyCode: Int64,
+                        at time: TimeInterval,
+                        config: KeyboardDebounceConfig) -> Bool {
+            debounceState.shouldSuppress(keyCode: keyCode,
+                                         isAutoRepeat: false,
+                                         event: .keyUp,
+                                         time: time,
+                                         config: config)
+        }
+        expect(!debounceDown(37, at: 10.00, config: debounceConfig),
                "debounce accepts the first key press")
-        expect(debounceState.shouldSuppress(keyCode: 37, isAutoRepeat: false, time: 10.03, config: debounceConfig),
-               "debounce suppresses duplicate key press inside the window")
-        expect(!debounceState.shouldSuppress(keyCode: 37, isAutoRepeat: false, time: 10.06, config: debounceConfig),
-               "debounce accepts the key after the window")
-        expect(!debounceState.shouldSuppress(keyCode: 37, isAutoRepeat: true, time: 10.07, config: debounceConfig),
+        expect(!debounceUp(37, at: 10.01, config: debounceConfig),
+               "debounce accepts key release")
+        expect(debounceDown(37, at: 10.03, config: debounceConfig),
+               "debounce suppresses same-key bounce after release")
+        expect(!debounceDown(37, at: 10.06, config: debounceConfig),
+               "debounce accepts same-key press after the release window")
+        expect(!debounceDown(37, at: 10.07, repeat: true, config: debounceConfig),
                "debounce leaves key auto-repeat alone")
+        let fastConfig = KeyboardDebounceConfig(enabled: true,
+                                                globalWindowMs: 10,
+                                                keyWindows: [:])
+        debounceState.reset()
+        expect(!debounceDown(0, at: 40.000, config: fastConfig),
+               "debounce 10 ms accepts the first fast key press")
+        _ = debounceUp(0, at: 40.004, config: fastConfig)
+        expect(debounceDown(0, at: 40.009, config: fastConfig),
+               "debounce 10 ms suppresses same-key bounce inside the release window")
+        expect(!debounceDown(0, at: 40.014, config: fastConfig),
+               "debounce 10 ms accepts the same key at the release boundary")
+        let defaultDebounceConfig = KeyboardDebounceConfig(enabled: true,
+                                                           globalWindowMs: Defaults.defaultKeyboardDebounceWindowMs,
+                                                           keyWindows: [:])
+        debounceState.reset()
+        expect(!debounceDown(0, at: 45.000, config: defaultDebounceConfig),
+               "debounce 5 ms default accepts the first fast key press")
+        _ = debounceUp(0, at: 45.001, config: defaultDebounceConfig)
+        expect(debounceDown(0, at: 45.005, config: defaultDebounceConfig),
+               "debounce 5 ms default suppresses same-key bounce inside the release window")
+        expect(!debounceDown(0, at: 45.006, config: defaultDebounceConfig),
+               "debounce 5 ms default accepts the same key at the release boundary")
+        debounceState.reset()
+        expect(!debounceDown(37, at: 50.000, config: fastConfig),
+               "debounce accepts normal phrase first letter")
+        _ = debounceUp(37, at: 50.020, config: fastConfig)
+        expect(!debounceDown(14, at: 50.025, config: fastConfig),
+               "debounce accepts normal phrase next letter")
+        _ = debounceUp(14, at: 50.045, config: fastConfig)
+        expect(!debounceDown(17, at: 50.050, config: fastConfig),
+               "debounce accepts normal phrase repeated-letter first press")
+        _ = debounceUp(17, at: 50.070, config: fastConfig)
+        expect(!debounceDown(17, at: 50.110, config: fastConfig),
+               "debounce accepts normal phrase repeated-letter second press")
+        debounceState.reset()
+        expect(!debounceDown(0, at: 60.000, config: fastConfig),
+               "debounce accepts the first key in an alternating pattern")
+        _ = debounceUp(0, at: 60.004, config: fastConfig)
+        expect(!debounceDown(11, at: 60.006, config: fastConfig),
+               "debounce accepts a different key inside another key's window")
+        _ = debounceUp(11, at: 60.009, config: fastConfig)
+        expect(!debounceDown(0, at: 60.011, config: fastConfig),
+               "debounce accepts a same-key press after another key was accepted")
+        debounceState.reset()
+        expect(!debounceDown(0, at: 70.000, config: fastConfig),
+               "debounce accepts the first key before duplicate down")
+        expect(debounceDown(0, at: 70.004, config: fastConfig),
+               "debounce suppresses non-repeat duplicate down while the key is still down")
+        expect(!debounceUp(0, at: 70.020, config: fastConfig),
+               "debounce still passes the release after a duplicate down")
+        debounceState.reset()
+        expect(!debounceDown(0, at: 75.000, config: fastConfig),
+               "debounce accepts a key before a missing release")
+        expect(!debounceDown(0, at: 75.020, config: fastConfig),
+               "debounce accepts a same-key press after the window even if release was missed")
+        debounceState.reset()
+        expect(!debounceDown(0, at: 80.000, config: fastConfig),
+               "debounce accepts the first key before an out-of-order event")
+        _ = debounceUp(0, at: 80.010, config: fastConfig)
+        expect(!debounceDown(0, at: 79.990, config: fastConfig),
+               "debounce resets same-key state when event timestamps move backward")
         let perKeyConfig = KeyboardDebounceConfig(enabled: true,
                                                   globalWindowMs: 20,
                                                   keyWindows: [37: 100, 40: 0])
         debounceState.reset()
-        _ = debounceState.shouldSuppress(keyCode: 37, isAutoRepeat: false, time: 20.00, config: perKeyConfig)
-        expect(debounceState.shouldSuppress(keyCode: 37, isAutoRepeat: false, time: 20.06, config: perKeyConfig),
+        _ = debounceDown(37, at: 20.00, config: perKeyConfig)
+        _ = debounceUp(37, at: 20.01, config: perKeyConfig)
+        expect(debounceDown(37, at: 20.06, config: perKeyConfig),
                "debounce per-key window overrides the global window")
-        _ = debounceState.shouldSuppress(keyCode: 40, isAutoRepeat: false, time: 30.00, config: perKeyConfig)
-        expect(!debounceState.shouldSuppress(keyCode: 40, isAutoRepeat: false, time: 30.01, config: perKeyConfig),
+        _ = debounceDown(40, at: 30.00, config: perKeyConfig)
+        _ = debounceUp(40, at: 30.005, config: perKeyConfig)
+        expect(!debounceDown(40, at: 30.006, config: perKeyConfig),
                "debounce per-key zero disables filtering for that key")
         let encodedKeyWindows = KeyboardDebounceConfig.encodeKeyWindows([37: 100, 40: 0])
         expect(encodedKeyWindows == "37:100,40:0",
@@ -319,6 +489,35 @@ struct MetricsTests {
         expect(KeyboardDebounceConfig.decodeKeyWindows("37:100,bad,40:0,99:999")
                == [37: 100, 40: 0, 99: Defaults.defaultKeyboardDebounceWindowMs],
                "debounce key windows decode and sanitize stored values")
+
+        expect(ScrollInverterSupport.shouldInvertMouseWheel(
+            ScrollWheelEventTraits(isContinuous: false, momentumPhase: 0, scrollPhase: 0, scrollCount: 0),
+            secondsSinceLastGesturePhase: nil
+        ), "scroll inverter flips classic mouse wheel ticks")
+        expect(ScrollInverterSupport.shouldInvertMouseWheel(
+            ScrollWheelEventTraits(isContinuous: true, momentumPhase: 0, scrollPhase: 0, scrollCount: 0),
+            secondsSinceLastGesturePhase: nil
+        ), "scroll inverter flips phase-less continuous wheel events")
+        expect(!ScrollInverterSupport.shouldInvertMouseWheel(
+            ScrollWheelEventTraits(isContinuous: true, momentumPhase: 0, scrollPhase: 2, scrollCount: 0),
+            secondsSinceLastGesturePhase: nil
+        ), "scroll inverter leaves touch scrolling phases alone")
+        expect(!ScrollInverterSupport.shouldInvertMouseWheel(
+            ScrollWheelEventTraits(isContinuous: true, momentumPhase: 3, scrollPhase: 0, scrollCount: 1),
+            secondsSinceLastGesturePhase: 0.1
+        ), "scroll inverter leaves momentum scrolling alone")
+        expect(!ScrollInverterSupport.shouldInvertMouseWheel(
+            ScrollWheelEventTraits(isContinuous: true, momentumPhase: 0, scrollPhase: 0, scrollCount: 2),
+            secondsSinceLastGesturePhase: 0.05
+        ), "scroll inverter leaves touch transition events (phaseless, counted, right after a phased event) alone")
+        expect(ScrollInverterSupport.shouldInvertMouseWheel(
+            ScrollWheelEventTraits(isContinuous: true, momentumPhase: 0, scrollPhase: 0, scrollCount: 2),
+            secondsSinceLastGesturePhase: 5.0
+        ), "scroll inverter still flips counted wheel events long after any gesture")
+        expect(ScrollInverterSupport.shouldInvertMouseWheel(
+            ScrollWheelEventTraits(isContinuous: true, momentumPhase: 0, scrollPhase: 0, scrollCount: 2),
+            secondsSinceLastGesturePhase: nil
+        ), "scroll inverter flips counted wheel events when no gesture was ever seen")
 
         // MARK: Watts & percent
 
@@ -330,6 +529,14 @@ struct MetricsTests {
         expectEqual(MetricFormat.percent(1), "100%", "percent full")
         expectEqual(MetricFormat.percent(1.4), "100%", "percent clamps high")
         expectEqual(MetricFormat.percent(-0.2), "0%", "percent clamps low")
+        expectEqual(MetricFormat.menuBarMemoryPercent(used: 79, total: 100), "79%",
+                    "menu bar memory shows the current RAM percentage")
+        expectEqual(MetricFormat.menuBarMemoryPercent(used: nil, total: 100), "--%",
+                    "menu bar memory keeps a placeholder when used RAM is unavailable")
+        expectEqual(MetricFormat.menuBarMemoryPercent(used: 79, total: nil), "--%",
+                    "menu bar memory keeps a placeholder when total RAM is unavailable")
+        expectEqual(MetricFormat.menuBarMemoryPercent(used: 79, total: 0), "--%",
+                    "menu bar memory keeps a placeholder when total RAM is invalid")
         expectClose(MetricFormat.stabilizedGPUUsage(previous: 0.03, current: 0.80), 0.23,
                     "GPU usage readout caps one-tick upward spikes")
         expectClose(MetricFormat.stabilizedGPUUsage(previous: 0.23, current: 0.80), 0.43,
@@ -472,11 +679,23 @@ struct MetricsTests {
             expect(migrationDefaults.integer(forKey: DefaultsKey.keyboardDebounceWindowMs)
                    == Defaults.defaultKeyboardDebounceWindowMs,
                    "keyboard debounce migration updates the old disabled Developer default")
+            migrationDefaults.set(10, forKey: DefaultsKey.keyboardDebounceWindowMs)
+            migrationDefaults.set(false, forKey: DefaultsKey.keyboardDebounceEnabled)
+            migrationDefaults.set("", forKey: DefaultsKey.keyboardDebounceKeyWindows)
+            Defaults.migrateLegacyKeyboardDebounceWindow(in: migrationDefaults)
+            expect(migrationDefaults.integer(forKey: DefaultsKey.keyboardDebounceWindowMs)
+                   == Defaults.defaultKeyboardDebounceWindowMs,
+                   "keyboard debounce migration updates the old disabled 10 ms default")
             migrationDefaults.set(30, forKey: DefaultsKey.keyboardDebounceWindowMs)
             migrationDefaults.set(true, forKey: DefaultsKey.keyboardDebounceEnabled)
             Defaults.migrateLegacyKeyboardDebounceWindow(in: migrationDefaults)
             expect(migrationDefaults.integer(forKey: DefaultsKey.keyboardDebounceWindowMs) == 30,
                    "keyboard debounce migration preserves active user choices")
+            migrationDefaults.set(10, forKey: DefaultsKey.keyboardDebounceWindowMs)
+            migrationDefaults.set(true, forKey: DefaultsKey.keyboardDebounceEnabled)
+            Defaults.migrateLegacyKeyboardDebounceWindow(in: migrationDefaults)
+            expect(migrationDefaults.integer(forKey: DefaultsKey.keyboardDebounceWindowMs) == 10,
+                   "keyboard debounce migration preserves active 10 ms user choices")
             migrationDefaults.removePersistentDomain(forName: shortcutSuite)
         } else {
             expect(false, "test suite defaults are available")
@@ -521,7 +740,7 @@ struct MetricsTests {
                "green button maximize override is opt-in")
         expect(registeredDefaults[DefaultsKey.keyboardDebounceEnabled] as? Bool == false,
                "keyboard debounce is opt-in")
-        expect(registeredDefaults[DefaultsKey.keyboardDebounceWindowMs] as? Int == 10,
+        expect(registeredDefaults[DefaultsKey.keyboardDebounceWindowMs] as? Int == 5,
                "keyboard debounce default window starts low")
         expect(registeredDefaults[DefaultsKey.keyboardDebounceKeyWindows] as? String == "",
                "keyboard debounce per-key windows start empty")
@@ -618,6 +837,12 @@ struct MetricsTests {
             DefaultsKey.windowLayoutShortcutMaximize,
             DefaultsKey.windowLayoutShortcutCenter,
             DefaultsKey.windowLayoutShortcutRestore,
+            DefaultsKey.windowLayoutShortcutLeftThird,
+            DefaultsKey.windowLayoutShortcutCenterThird,
+            DefaultsKey.windowLayoutShortcutRightThird,
+            DefaultsKey.windowLayoutShortcutLeftTwoThirds,
+            DefaultsKey.windowLayoutShortcutRightTwoThirds,
+            DefaultsKey.windowLayoutShortcutNextDisplay,
         ]
         let layoutShortcutValues = layoutShortcutKeys.compactMap { registeredDefaults[$0] as? String }
         expect(layoutShortcutValues.count == layoutShortcutKeys.count,
@@ -652,7 +877,9 @@ struct MetricsTests {
                "invalid debounce window falls back to default")
         expect(Defaults.sanitizedMenuBarLabelStyle("classic") == "classic", "valid label style is preserved")
         expect(Defaults.sanitizedMenuBarLabelStyle("bad") == "compact", "invalid label style falls back to compact")
+        expect(Defaults.sanitizedMenuBarMemoryStyle("percent") == "percent", "percent memory style is preserved")
         expect(Defaults.sanitizedMenuBarMemoryStyle("dot") == "dot", "valid memory style is preserved")
+        expect(Defaults.sanitizedMenuBarMemoryStyle("both") == "both", "combined memory style is preserved")
         expect(Defaults.sanitizedMenuBarMemoryStyle("bad") == "percent", "invalid memory style falls back to percent")
         expect(Defaults.sanitizedMenuBarMetricOrder("cpu,gpu,memory,network,battery,power")
                == ["cpu", "gpu", "memory", "network", "battery", "power",
@@ -668,6 +895,76 @@ struct MetricsTests {
         expect(Defaults.sanitizedAutoQuitExceptions(["com.example.One", Defaults.finderBundleIdentifier])
                == [Defaults.finderBundleIdentifier, "com.example.One"],
                "Finder is mandatory in the auto-quit exception list")
+        expect(!AutoQuitSupport.shouldScheduleWindowCheck(for: .appDeactivated,
+                                                          hasRecentCloseRequest: false),
+               "AutoQuit does not treat app deactivation as a window close")
+        expect(!AutoQuitSupport.shouldScheduleWindowCheck(for: .mainWindowChanged,
+                                                          hasRecentCloseRequest: false),
+               "AutoQuit does not treat main window changes as a window close")
+        expect(!AutoQuitSupport.shouldScheduleWindowCheck(for: .focusedWindowChanged,
+                                                          hasRecentCloseRequest: false),
+               "AutoQuit does not treat focused window changes as a window close")
+        expect(AutoQuitSupport.shouldScheduleWindowCheck(for: .windowDestroyed,
+                                                         hasRecentCloseRequest: false),
+               "AutoQuit checks windows after a destroyed window")
+        expect(!AutoQuitSupport.shouldScheduleWindowCheck(for: .appHidden,
+                                                          hasRecentCloseRequest: false),
+               "AutoQuit ignores hidden apps without a recent close request")
+        expect(AutoQuitSupport.shouldScheduleWindowCheck(for: .appHidden,
+                                                         hasRecentCloseRequest: true),
+               "AutoQuit checks hidden apps after a recent close request")
+        expect(AutoQuitSupport.isCommandW(keyCode: 13, command: true, control: false),
+               "AutoQuit treats Command W as a close request")
+        expect(!AutoQuitSupport.isCommandW(keyCode: 18, command: true, control: true),
+               "AutoQuit does not treat Control number Space switching as a close request")
+        expect(AutoQuitSupport.shouldQuitAfterWindowCheck(hadWindows: true,
+                                                          appIsTerminated: false,
+                                                          appIsExcepted: false,
+                                                          appIsHidden: false,
+                                                          hiddenByCloseRequest: false,
+                                                          hasKnownMinimizedWindow: false,
+                                                          hasUserFacingWindow: false),
+               "AutoQuit can quit when an app that had windows is now windowless")
+        expect(!AutoQuitSupport.shouldQuitAfterWindowCheck(hadWindows: false,
+                                                           appIsTerminated: false,
+                                                           appIsExcepted: false,
+                                                           appIsHidden: false,
+                                                           hiddenByCloseRequest: false,
+                                                           hasKnownMinimizedWindow: false,
+                                                           hasUserFacingWindow: false),
+               "AutoQuit does not quit apps that started windowless")
+        expect(!AutoQuitSupport.shouldQuitAfterWindowCheck(hadWindows: true,
+                                                           appIsTerminated: false,
+                                                           appIsExcepted: true,
+                                                           appIsHidden: false,
+                                                           hiddenByCloseRequest: false,
+                                                           hasKnownMinimizedWindow: false,
+                                                           hasUserFacingWindow: false),
+               "AutoQuit keeps excepted apps running")
+        expect(!AutoQuitSupport.shouldQuitAfterWindowCheck(hadWindows: true,
+                                                           appIsTerminated: false,
+                                                           appIsExcepted: false,
+                                                           appIsHidden: true,
+                                                           hiddenByCloseRequest: false,
+                                                           hasKnownMinimizedWindow: false,
+                                                           hasUserFacingWindow: false),
+               "AutoQuit keeps hidden apps running without explicit close intent")
+        expect(!AutoQuitSupport.shouldQuitAfterWindowCheck(hadWindows: true,
+                                                           appIsTerminated: false,
+                                                           appIsExcepted: false,
+                                                           appIsHidden: false,
+                                                           hiddenByCloseRequest: false,
+                                                           hasKnownMinimizedWindow: true,
+                                                           hasUserFacingWindow: false),
+               "AutoQuit keeps apps running when a minimized window is known")
+        expect(!AutoQuitSupport.shouldQuitAfterWindowCheck(hadWindows: true,
+                                                           appIsTerminated: false,
+                                                           appIsExcepted: false,
+                                                           appIsHidden: false,
+                                                           hiddenByCloseRequest: false,
+                                                           hasKnownMinimizedWindow: false,
+                                                           hasUserFacingWindow: true),
+               "AutoQuit keeps apps with user-facing windows running")
         expect(Defaults.sanitizedPanelItemOrder("uninstaller,homebrew,homebrew,bad",
                                                 defaultOrder: ["homebrew", "media", "uninstaller", "cleanURL", "cleaning"])
                == ["uninstaller", "homebrew", "media", "cleanURL", "cleaning"],
@@ -717,10 +1014,13 @@ struct MetricsTests {
                                                        destinationVisibleFrame: nextDisplayFrame)
                == nextDisplayFrame,
                "window layout next display clamps oversized windows to the destination visible frame")
-        expect(!WindowLayoutAction.shortcutActions.contains(.leftThird),
-               "manual third actions do not register global shortcuts")
-        expect(!WindowLayoutAction.shortcutActions.contains(.nextDisplay),
-               "next display action stays manual and does not register a global shortcut")
+        expect(WindowLayoutAction.shortcutActions.count == WindowLayoutAction.allCases.count,
+               "every window layout action can register a global shortcut")
+        expect(WindowLayoutAction.shortcutActions.contains(.nextDisplay),
+               "next display registers a global shortcut")
+        expect(Set(WindowLayoutAction.shortcutActions.map(\.shortcutKey)).count
+               == WindowLayoutAction.shortcutActions.count,
+               "every window layout shortcut has its own defaults key")
         expect(WindowLayoutAction.shortcutActions.contains(.leftHalf),
                "existing half actions keep global shortcuts")
         expect(WindowLayoutGeometry.rect(for: .topLeft, current: currentWindow, visibleFrame: visibleFrame)
@@ -1272,6 +1572,292 @@ struct MetricsTests {
                                                                    wasShiftHeld: false,
                                                                    isShiftHeld: true),
                "App Switcher shift-only back navigation stays off when Shift belongs to the shortcut")
+
+        func syntheticCapture(_ draw: (CGContext, CGSize) -> Void) -> CGImage? {
+            let size = CGSize(width: 320, height: 200)
+            guard let context = CGContext(data: nil,
+                                          width: Int(size.width),
+                                          height: Int(size.height),
+                                          bitsPerComponent: 8,
+                                          bytesPerRow: 0,
+                                          space: CGColorSpaceCreateDeviceRGB(),
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return nil }
+            draw(context, size)
+            return context.makeImage()
+        }
+        let opaqueCapture = syntheticCapture { context, size in
+            context.setFillColor(CGColor(red: 0.2, green: 0.3, blue: 0.4, alpha: 1))
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+        let roundedCapture = syntheticCapture { context, size in
+            let path = CGPath(roundedRect: CGRect(origin: .zero, size: size),
+                              cornerWidth: 12, cornerHeight: 12, transform: nil)
+            context.addPath(path)
+            context.setFillColor(CGColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 1))
+            context.fillPath()
+        }
+        let shearedCapture = syntheticCapture { context, size in
+            context.translateBy(x: size.width * 0.35, y: size.height * 0.3)
+            context.concatenate(CGAffineTransform(a: 0.35, b: 0.12, c: -0.18, d: 0.35, tx: 0, ty: 0))
+            context.setFillColor(CGColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1))
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+        // A sheared capture whose bounding box hugs the artwork: only the two
+        // corners outside the parallelogram stay transparent.
+        let tightShearCapture = syntheticCapture { context, size in
+            context.move(to: CGPoint(x: size.width * 0.25, y: 0))
+            context.addLine(to: CGPoint(x: size.width, y: 0))
+            context.addLine(to: CGPoint(x: size.width * 0.75, y: size.height))
+            context.addLine(to: CGPoint(x: 0, y: size.height))
+            context.closePath()
+            context.setFillColor(CGColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1))
+            context.fillPath()
+        }
+        if let opaqueCapture, let grid = SwitcherSupport.alphaGrid(of: opaqueCapture) {
+            expect(!SwitcherSupport.captureLooksTransformed(alphaGrid: grid),
+                   "switcher keeps captures of fully opaque windows")
+        } else {
+            expect(false, "switcher alpha grid renders an opaque synthetic capture")
+        }
+        if let roundedCapture, let grid = SwitcherSupport.alphaGrid(of: roundedCapture) {
+            expect(!SwitcherSupport.captureLooksTransformed(alphaGrid: grid),
+                   "switcher keeps captures of windows with rounded corners")
+        } else {
+            expect(false, "switcher alpha grid renders a rounded synthetic capture")
+        }
+        if let shearedCapture, let grid = SwitcherSupport.alphaGrid(of: shearedCapture) {
+            expect(SwitcherSupport.captureLooksTransformed(alphaGrid: grid),
+                   "switcher rejects the small sheared snapshot Stage Manager renders for parked windows")
+        } else {
+            expect(false, "switcher alpha grid renders a sheared synthetic capture")
+        }
+        if let tightShearCapture, let grid = SwitcherSupport.alphaGrid(of: tightShearCapture) {
+            expect(SwitcherSupport.captureLooksTransformed(alphaGrid: grid),
+                   "switcher rejects sheared captures even when the bounding box hugs the artwork")
+        } else {
+            expect(false, "switcher alpha grid renders a tight sheared synthetic capture")
+        }
+        expect(!SwitcherSupport.captureLooksTransformed(alphaGrid: [], gridSize: 8),
+               "switcher capture classifier tolerates a malformed alpha grid")
+
+        expect(SwitcherSupport.staleCacheVictims(ids: [1, 2, 3], active: [], lastTouched: [:], limit: 3).isEmpty,
+               "switcher preview cache keeps everything under the limit")
+        expect(SwitcherSupport.staleCacheVictims(ids: [1, 2, 3, 4],
+                                                 active: [1],
+                                                 lastTouched: [2: 10, 3: 5, 4: 20],
+                                                 limit: 3) == [3],
+               "switcher preview cache evicts the least recently used entry beyond the limit")
+        expect(SwitcherSupport.staleCacheVictims(ids: [1, 2, 3, 4],
+                                                 active: [3],
+                                                 lastTouched: [1: 1, 2: 2, 4: 4],
+                                                 limit: 2) == [1, 2],
+               "switcher preview cache never evicts entries being refreshed right now")
+
+        // Sheared alpha mask (rows shift right going down): corner detection
+        // must find the parallelogram's extremes so rectification can undo it.
+        let quadWidth = 120, quadHeight = 100
+        var shearAlpha = [UInt8](repeating: 0, count: quadWidth * quadHeight)
+        for y in 0..<quadHeight {
+            let shift = y * 20 / quadHeight
+            for x in shift..<(80 + shift) {
+                shearAlpha[y * quadWidth + x] = 255
+            }
+        }
+        if let corners = SwitcherSupport.opaqueQuadCorners(alpha: shearAlpha,
+                                                           width: quadWidth,
+                                                           height: quadHeight) {
+            expect(corners.topLeft == CGPoint(x: 0, y: 0)
+                   && corners.topRight == CGPoint(x: 79, y: 0)
+                   && corners.bottomRight == CGPoint(x: 98, y: 99)
+                   && corners.bottomLeft == CGPoint(x: 19, y: 99),
+                   "switcher quad corners land on the sheared mask extremes")
+        } else {
+            expect(false, "switcher quad corners resolve for a sheared mask")
+        }
+        expect(SwitcherSupport.opaqueQuadCorners(alpha: [UInt8](repeating: 0, count: quadWidth * quadHeight),
+                                                 width: quadWidth,
+                                                 height: quadHeight) == nil,
+               "switcher quad corners reject an empty capture")
+
+        expect(DockClickSupport.action(appIsFrontmost: true,
+                                       hasUnminimizedWindows: true,
+                                       hasMinimizedWindows: false,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false) == .minimize,
+               "dock click minimizes the frontmost app with visible windows")
+        expect(DockClickSupport.action(appIsFrontmost: false,
+                                       hasUnminimizedWindows: true,
+                                       hasMinimizedWindows: false,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false) == .passThrough,
+               "dock click lets the Dock activate apps that are not frontmost")
+        expect(DockClickSupport.action(appIsFrontmost: true,
+                                       hasUnminimizedWindows: false,
+                                       hasMinimizedWindows: true,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false) == .restore,
+               "dock click restores when every window is minimized")
+        expect(DockClickSupport.action(appIsFrontmost: false,
+                                       hasUnminimizedWindows: false,
+                                       hasMinimizedWindows: true,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false) == .restore,
+               "dock click restores minimized windows of background apps too")
+        expect(DockClickSupport.action(appIsFrontmost: true,
+                                       hasUnminimizedWindows: false,
+                                       hasMinimizedWindows: false,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: false) == .passThrough,
+               "dock click passes through for windowless apps")
+        expect(DockClickSupport.action(appIsFrontmost: true,
+                                       hasUnminimizedWindows: true,
+                                       hasMinimizedWindows: true,
+                                       hasFullscreenWindows: true,
+                                       hasModifiers: false) == .passThrough,
+               "dock click stays hands-off while the app has a fullscreen window")
+        expect(DockClickSupport.action(appIsFrontmost: true,
+                                       hasUnminimizedWindows: true,
+                                       hasMinimizedWindows: false,
+                                       hasFullscreenWindows: false,
+                                       hasModifiers: true) == .passThrough,
+               "dock click keeps the Dock's native modifier shortcuts")
+
+        expect(DockClickSupport.repeatDecision(lastAction: nil, elapsed: nil) == .deriveFromState,
+               "dock click derives the first click from window state")
+        expect(DockClickSupport.repeatDecision(lastAction: .minimize, elapsed: 0.1) == .swallow,
+               "dock click swallows accidental double-clicks")
+        expect(DockClickSupport.repeatDecision(lastAction: .minimize, elapsed: 0.5) == .toggle(.restore),
+               "dock click right after a minimize toggles straight back to restore")
+        expect(DockClickSupport.repeatDecision(lastAction: .restore, elapsed: 0.5) == .toggle(.minimize),
+               "dock click right after a restore toggles back to minimize")
+        expect(DockClickSupport.repeatDecision(lastAction: .minimize, elapsed: 2.0) == .deriveFromState,
+               "dock click trusts settled window state once the intent window passes")
+
+        // Bottom Dock reserving ~70 pt: only the reserved strip counts, so a
+        // click on a preview panel floating just above the Dock passes through.
+        let dockScreen = CGRect(x: 0, y: 0, width: 1512, height: 982)
+        let bottomDockVisible = CGRect(x: 0, y: 24, width: 1512, height: 888)
+        expect(DockClickSupport.dockStripContains(CGPoint(x: 700, y: 950),
+                                                  screenFrame: dockScreen,
+                                                  visibleFrame: bottomDockVisible),
+               "dock strip accepts clicks inside the reserved bottom strip")
+        expect(!DockClickSupport.dockStripContains(CGPoint(x: 700, y: 880),
+                                                   screenFrame: dockScreen,
+                                                   visibleFrame: bottomDockVisible),
+               "dock strip rejects clicks hovering above the Dock, like a preview panel")
+        expect(!DockClickSupport.dockStripContains(CGPoint(x: 700, y: 20),
+                                                   screenFrame: dockScreen,
+                                                   visibleFrame: bottomDockVisible),
+               "dock strip ignores the top edge where the Dock never lives")
+        let leftDockVisible = CGRect(x: 70, y: 24, width: 1442, height: 958)
+        expect(DockClickSupport.dockStripContains(CGPoint(x: 40, y: 500),
+                                                  screenFrame: dockScreen,
+                                                  visibleFrame: leftDockVisible),
+               "dock strip accepts clicks inside a left Dock's reserved strip")
+        expect(!DockClickSupport.dockStripContains(CGPoint(x: 700, y: 950),
+                                                   screenFrame: dockScreen,
+                                                   visibleFrame: leftDockVisible),
+               "dock strip rejects bottom clicks when the Dock lives on the left")
+        expect(DockClickSupport.dockStripContains(CGPoint(x: 700, y: 950),
+                                                  screenFrame: dockScreen,
+                                                  visibleFrame: CGRect(x: 0, y: 24, width: 1512, height: 958)),
+               "dock strip falls back to an edge band when auto-hide reserves nothing")
+
+        expect(MiddleClickSupport.actionForClick(fingerCount: 3, frameAge: 0.05, settledFor: 0.2,
+                                                 sinceLastTransformEnd: nil,
+                                                 systemDragGestureEnabled: false) == .transform,
+               "middle click transforms a settled three-finger press")
+        expect(MiddleClickSupport.actionForClick(fingerCount: 2, frameAge: 0.05, settledFor: 0.2,
+                                                 sinceLastTransformEnd: nil,
+                                                 systemDragGestureEnabled: false) == .passThrough,
+               "middle click leaves two-finger clicks alone")
+        expect(MiddleClickSupport.actionForClick(fingerCount: 4, frameAge: 0.05, settledFor: 0.2,
+                                                 sinceLastTransformEnd: nil,
+                                                 systemDragGestureEnabled: false) == .passThrough,
+               "middle click leaves four-finger clicks alone")
+        expect(MiddleClickSupport.actionForClick(fingerCount: 3, frameAge: 1.0, settledFor: 0.2,
+                                                 sinceLastTransformEnd: nil,
+                                                 systemDragGestureEnabled: false) == .passThrough,
+               "middle click ignores stale contact frames (fingers already lifted)")
+        expect(MiddleClickSupport.actionForClick(fingerCount: 3, frameAge: 0.05, settledFor: 0.01,
+                                                 sinceLastTransformEnd: nil,
+                                                 systemDragGestureEnabled: false) == .passThrough,
+               "middle click rejects a click arriving with the third finger's touchdown")
+        expect(MiddleClickSupport.actionForClick(fingerCount: 3, frameAge: 0.05, settledFor: 0.2,
+                                                 sinceLastTransformEnd: 0.1,
+                                                 systemDragGestureEnabled: false) == .swallow,
+               "middle click drops the tap-to-click bounce right after a transform")
+        expect(MiddleClickSupport.actionForClick(fingerCount: 3, frameAge: 0.05, settledFor: 0.2,
+                                                 sinceLastTransformEnd: 0.5,
+                                                 systemDragGestureEnabled: false) == .transform,
+               "middle click accepts a deliberate second press after the guard window")
+        expect(MiddleClickSupport.actionForClick(fingerCount: 1, frameAge: 0.05, settledFor: 0,
+                                                 sinceLastTransformEnd: 0.1,
+                                                 systemDragGestureEnabled: false) == .passThrough,
+               "middle click never swallows ordinary one-finger clicks")
+        expect(MiddleClickSupport.actionForClick(fingerCount: 3, frameAge: 0.05, settledFor: 0.2,
+                                                 sinceLastTransformEnd: nil,
+                                                 systemDragGestureEnabled: true) == .passThrough,
+               "middle click stands down while the system three-finger drag owns the gesture")
+
+        expectEqual(QuickToolsSupport.colorString(red: 1, green: 0, blue: 0, format: .hex), "#FF0000",
+                    "color picker formats pure red as hex")
+        expectEqual(QuickToolsSupport.colorString(red: 0.2, green: 0.4, blue: 0.6, format: .rgb),
+                    "rgb(51, 102, 153)",
+                    "color picker formats components as CSS rgb")
+        expectEqual(QuickToolsSupport.colorString(red: 1, green: 0, blue: 0, format: .hsl),
+                    "hsl(0, 100%, 50%)",
+                    "color picker formats pure red as hsl")
+        expectEqual(QuickToolsSupport.colorString(red: 0, green: 0.5, blue: 0, format: .hsl),
+                    "hsl(120, 100%, 25%)",
+                    "color picker formats dark green as hsl")
+        expectEqual(QuickToolsSupport.colorString(red: 0.25, green: 0.5, blue: 0.75, format: .swiftui),
+                    "Color(red: 0.250, green: 0.500, blue: 0.750)",
+                    "color picker formats components as SwiftUI code")
+        expectEqual(QuickToolsSupport.colorString(red: 1.4, green: -0.2, blue: 0.5, format: .hex), "#FF0080",
+                    "color picker clamps extended-gamut components")
+        expect(ColorCopyFormat.sanitized("banana") == .hex,
+               "color picker falls back to hex for unknown stored formats")
+
+        let ocrLines = [
+            QuickToolsSupport.RecognizedLine(text: "world", x: 0.5, y: 0.8),
+            QuickToolsSupport.RecognizedLine(text: "hello", x: 0.1, y: 0.81),
+            QuickToolsSupport.RecognizedLine(text: "below", x: 0.1, y: 0.4),
+            QuickToolsSupport.RecognizedLine(text: "   ", x: 0.2, y: 0.6),
+        ]
+        expectEqual(QuickToolsSupport.joinedRecognizedText(ocrLines), "hello\nworld\nbelow",
+                    "screen OCR joins lines top to bottom, left to right, dropping blanks")
+        expectEqual(QuickToolsSupport.joinedRecognizedText([]), "",
+                    "screen OCR joins an empty result to an empty string")
+
+        // Launcher grid: 8 items in 3 columns (rows of 3, 3, 2).
+        expect(QuickToolsSupport.gridIndex(after: 0, count: 8, columns: 3, direction: .right) == 1,
+               "launcher grid moves right within a row")
+        expect(QuickToolsSupport.gridIndex(after: 2, count: 8, columns: 3, direction: .right) == 2,
+               "launcher grid does not wrap at the row's right edge")
+        expect(QuickToolsSupport.gridIndex(after: 3, count: 8, columns: 3, direction: .left) == 3,
+               "launcher grid does not wrap at the row's left edge")
+        expect(QuickToolsSupport.gridIndex(after: 1, count: 8, columns: 3, direction: .down) == 4,
+               "launcher grid moves down one row")
+        expect(QuickToolsSupport.gridIndex(after: 7, count: 8, columns: 3, direction: .down) == 7,
+               "launcher grid stays put when there is no row below")
+        expect(QuickToolsSupport.gridIndex(after: 4, count: 8, columns: 3, direction: .up) == 1,
+               "launcher grid moves up one row")
+        expect(QuickToolsSupport.gridIndex(after: 6, count: 8, columns: 3, direction: .right) == 7,
+               "launcher grid moves right in the last partial row")
+        expect(QuickToolsSupport.gridIndex(after: 99, count: 8, columns: 3, direction: .left) == 6,
+               "launcher grid clamps an out-of-range index")
+        expect(QuickToolsSupport.gridIndex(after: 0, count: 0, columns: 3, direction: .down) == 0,
+               "launcher grid survives an empty item list")
+
+        expect(QuickToolsSupport.hiddenIDs(from: "a,b,,c") == Set(["a", "b", "c"]),
+               "launcher hidden set parses and drops empties")
+        expectEqual(QuickToolsSupport.serializeHiddenIDs(Set(["b", "a"])), "a,b",
+                    "launcher hidden set serializes deterministically")
+        expect(QuickToolsSupport.hiddenIDs(from: QuickToolsSupport.serializeHiddenIDs(Set(["x", "y"])))
+                   == Set(["x", "y"]),
+               "launcher hidden set round-trips")
         let groupedSwitcherItems = [
             SwitcherItem.window(id: 1, title: "One", appName: "Alpha", pid: 101,
                                 isOnScreen: true, frame: .zero),
@@ -2205,8 +2791,83 @@ struct MetricsTests {
                "nettop stream parser emits only active rows from the first delta section")
         expectClose(streamedSections.first?.first?.bytesIn ?? -1, 416,
                     "nettop stream parser does not publish cumulative bytes")
-        expect(NetworkProcessSupport.nettopArguments == ["-P", "-d", "-x", "-J", "bytes_in,bytes_out", "-L", "2", "-s", "1"],
-               "nettop per-app sampling keeps CSV output and relies on the app timeout instead of process exit")
+        expect(NetworkProcessSupport.nettopArguments == ["-P", "-d", "-x", "-J", "bytes_in,bytes_out", "-L", "1", "-s", "1"],
+               "nettop per-app sampling asks for one cumulative section and computes deltas in app")
+
+        var networkDelta = NetworkProcessDeltaTracker(maxGap: 10)
+        let baselineNetwork = [
+            NetworkProcessSample(pid: 10, name: "Browser", bytesIn: 1_000, bytesOut: 500),
+            NetworkProcessSample(pid: 20, name: "Editor", bytesIn: 200, bytesOut: 300),
+        ]
+        expect(networkDelta.rates(from: baselineNetwork, now: 100).isEmpty,
+               "network process delta primes the first cumulative sample")
+        let rateNetwork = networkDelta.rates(from: [
+            NetworkProcessSample(pid: 10, name: "Browser", bytesIn: 3_048, bytesOut: 1_524),
+            NetworkProcessSample(pid: 20, name: "Editor", bytesIn: 200, bytesOut: 300),
+        ], now: 102)
+        expect(rateNetwork.count == 1 && rateNetwork.first?.pid == 10,
+               "network process delta keeps only processes with traffic")
+        expectClose(rateNetwork.first?.bytesIn ?? -1, 1_024,
+                    "network process delta computes download bytes per second")
+        expectClose(rateNetwork.first?.bytesOut ?? -1, 512,
+                    "network process delta computes upload bytes per second")
+        let resetNetwork = networkDelta.rates(from: [
+            NetworkProcessSample(pid: 10, name: "Browser", bytesIn: 100, bytesOut: 50),
+        ], now: 104)
+        expect(resetNetwork.isEmpty,
+               "network process delta treats counter resets as a fresh baseline")
+        let staleNetwork = networkDelta.rates(from: [
+            NetworkProcessSample(pid: 10, name: "Browser", bytesIn: 10_000, bytesOut: 10_000),
+        ], now: 120)
+        expect(staleNetwork.isEmpty,
+               "network process delta treats long gaps as a fresh baseline")
+        let renewedLease = NetworkProcessSamplingPolicy.renewedLease(now: 50)
+        expect(NetworkProcessSamplingPolicy.leaseIsActive(expiresAt: renewedLease, now: 61.9),
+               "network monitoring lease remains active before expiry")
+        expect(!NetworkProcessSamplingPolicy.leaseIsActive(expiresAt: renewedLease, now: 62.0),
+               "network monitoring lease expires exactly at the boundary")
+        expectClose(NetworkProcessSamplingPolicy.shortenedLease(currentExpiresAt: 90, now: 50),
+                    54,
+                    "network monitoring stop shortens the lease instead of depending on balanced disappear events")
+
+        expect(MonitorSamplingPolicy.sampleStride(for: .cpu, intervalSeconds: 2, foreground: false) == 1,
+               "monitor CPU stays responsive in menu-bar-only mode")
+        expect(MonitorSamplingPolicy.sampleStride(for: .disk, intervalSeconds: 2, foreground: false) == 5,
+               "monitor disk sampling slows down in menu-bar-only mode without exceeding DiskSampler.maxGap")
+        expect(MonitorSamplingPolicy.sampleStride(for: .peripheralBattery, intervalSeconds: 2, foreground: false) == 30,
+               "monitor peripheral battery sampling is heavily throttled in menu-bar-only mode")
+        expect(MonitorSamplingPolicy.sampleStride(for: .disk, intervalSeconds: 2, foreground: true) == 1,
+               "monitor disk sampling stays live while the panel is open")
+        expect(MonitorSamplingPolicy.shouldSample(.disk, tick: 4, intervalSeconds: 2, foreground: false) == false,
+               "monitor skips heavy menu-bar-only ticks before the stride")
+        expect(MonitorSamplingPolicy.shouldSample(.disk, tick: 5, intervalSeconds: 2, foreground: false),
+               "monitor samples heavy menu-bar-only ticks at the stride")
+
+        expect(MonitorSamplingPolicy.wakeTicks(for: [.cpu, .disk], intervalSeconds: 2, foreground: false) == 1,
+               "monitor wakes every tick while an every-tick metric is on")
+        expect(MonitorSamplingPolicy.wakeTicks(for: [.temperature], intervalSeconds: 2, foreground: false) == 8,
+               "monitor with only temperature wakes once per temperature stride")
+        expect(MonitorSamplingPolicy.wakeTicks(for: [.peripheralBattery], intervalSeconds: 2, foreground: false) == 30,
+               "monitor with only peripheral battery wakes once per minute")
+        expect(MonitorSamplingPolicy.wakeTicks(for: [.disk, .peripheralBattery], intervalSeconds: 2, foreground: false) == 5,
+               "monitor wake cadence is the GCD of the needed strides")
+        expect(MonitorSamplingPolicy.wakeTicks(for: [.temperature], intervalSeconds: 2, foreground: true) == 1,
+               "monitor wakes every tick in the foreground")
+        expect(MonitorSamplingPolicy.wakeTicks(for: [], intervalSeconds: 2, foreground: false) == 1,
+               "monitor wake cadence defaults to every tick with no needs")
+        // Exactness invariant: the cadence always divides every needed stride,
+        // so grid-aligned ticks keep hitting each stride exactly on schedule.
+        let wakeKinds: [MonitorSamplingKind] = [.disk, .power, .gpuUsage, .temperature, .peripheralBattery]
+        let cadence = MonitorSamplingPolicy.wakeTicks(for: wakeKinds, intervalSeconds: 2, foreground: false)
+        expect(wakeKinds.allSatisfy {
+            MonitorSamplingPolicy.sampleStride(for: $0, intervalSeconds: 2, foreground: false) % cadence == 0
+        }, "monitor wake cadence divides every needed stride")
+        expect(MonitorSamplingPolicy.alignedTick(16, wakeTicks: 8) == 16,
+               "monitor tick already on the wake grid stays put")
+        expect(MonitorSamplingPolicy.alignedTick(7, wakeTicks: 8) == 8,
+               "monitor tick off the wake grid realigns to the next slot")
+        expect(MonitorSamplingPolicy.alignedTick(9, wakeTicks: 1) == 9,
+               "monitor tick needs no alignment at every-tick cadence")
 
         // MARK: Interface filtering
 

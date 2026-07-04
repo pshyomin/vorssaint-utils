@@ -132,6 +132,45 @@ struct PanelClipboardView: View {
                              fallback: .clipboardDefault)
     }
 
+    @ViewBuilder
+    private func entryPreview(_ entry: ClipboardHistoryEntry) -> some View {
+        switch entry.kind {
+        case .text:
+            Text(entry.preview)
+                .font(.system(size: 10.5))
+                .lineLimit(3)
+                .truncationMode(.tail)
+                .textSelection(.enabled)
+        case .image:
+            HStack(alignment: .center, spacing: 7) {
+                if let name = entry.imageFile,
+                   let thumbnail = ClipboardImageStore.thumbnail(named: name) {
+                    Image(nsImage: thumbnail)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 110, maxHeight: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                }
+                Text("\(text.imageEntryLabel) · \(entry.imageDimensionsLabel)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+        case .files:
+            HStack(alignment: .center, spacing: 7) {
+                Image(systemName: "folder")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Text(entry.filePaths.count == 1
+                     ? (entry.fileNames.first ?? entry.preview)
+                     : String(format: text.fileCountFormat, entry.filePaths.count))
+                    .font(.system(size: 10.5))
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+            }
+            .help(entry.filePaths.joined(separator: "\n"))
+        }
+    }
+
     private func entryRow(_ entry: ClipboardHistoryEntry) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             if entry.isPinned {
@@ -139,11 +178,7 @@ struct PanelClipboardView: View {
                     .font(.system(size: 9.5, weight: .bold))
                     .foregroundStyle(Color.accentColor)
             }
-            Text(entry.preview)
-                .font(.system(size: 10.5))
-                .lineLimit(3)
-                .truncationMode(.tail)
-                .textSelection(.enabled)
+            entryPreview(entry)
             HStack(spacing: 6) {
                 Button {
                     history.move(entry, .up)

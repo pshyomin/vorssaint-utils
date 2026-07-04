@@ -65,6 +65,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         DockPreviewService.shared.syncWithPreferences()
         FinderCutPaste.shared.syncWithPreferences()
         AutoQuitService.shared.syncWithPreferences()
+        DockClickService.shared.syncWithPreferences()
+        MiddleClickService.shared.syncWithPreferences()
+        PastePlainService.shared.syncWithPreferences()
+        ColorSamplerService.shared.syncWithPreferences()
+        ScreenTextService.shared.syncWithPreferences()
+        MicMuteService.shared.syncWithPreferences()
+        QuickLauncherService.shared.syncWithPreferences()
         ShelfService.shared.syncWithPreferences()
         URLCleanerService.shared.syncWithPreferences()
         WindowMaximizer.shared.syncWithPreferences()
@@ -91,6 +98,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
                 DockPreviewService.shared.syncWithPreferences()
                 FinderCutPaste.shared.syncWithPreferences()
                 AutoQuitService.shared.syncWithPreferences()
+                DockClickService.shared.syncWithPreferences()
+                MiddleClickService.shared.syncWithPreferences()
                 WindowMaximizer.shared.syncWithPreferences()
                 KeyboardDebounceService.shared.syncWithPreferences()
                 WindowLayoutService.shared.syncWithPreferences()
@@ -130,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         URLCleanerService.shared.stop()
         WindowMaximizer.shared.stop()
         KeyboardDebounceService.shared.suspend()
+        MiddleClickService.shared.suspend()
         DockPreviewService.shared.stop()
         SoundOutputSwitcher.shared.stop()
         AppVolumeMixer.shared.stopAll()
@@ -144,10 +154,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         guard !flag else { return true }
         // A deliberate reopen with no windows showing is the user's recovery action.
-        // Rebuild the menu bar item unconditionally: macOS keeps the button's window
-        // non-nil even when it has dropped the icon for lack of room, so there's no
-        // cheap way to detect that, and only a fresh item makes the OS re-place it.
-        statusController?.recreateStatusItem()
+        // Rebuild the menu bar item, but only sacrifice the saved Cmd+drag position
+        // when the icon is actually missing: the pre-rebuild item has a settled
+        // frame, so iconIsOnScreen() is trustworthy here (the not-ready-frame
+        // caveat below only applies to a freshly created item). A dropped icon
+        // reads off-screen/zero and still gets fresh placement, so recovery works;
+        // a visible icon keeps its autosave name and position.
+        statusController?.recreateStatusItem(resetPlacement: !iconIsOnScreen())
         // Decide on the next run-loop turn: a freshly rebuilt status item has no
         // laid-out on-screen frame yet this turn, so iconIsOnScreen() would read a
         // not-ready frame and wrongly skip the panel. After layout: pop the panel
@@ -553,6 +566,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         }
         if !popoverIsSwitchingAnchor {
             MenuPanelFocus.shared.clearMetricFocus()
+            // Non-forced stop: the shortened lease lets nettop wind down on its
+            // own within a few seconds while keeping the delta baseline, so a
+            // quick reopen shows per-app rows immediately instead of re-priming.
+            ProcessUsageService.shared.stopNetworkMonitoring()
             ProcessUsageService.shared.clearCachedRows()
             ResponsibleProcess.clearIconCache()
         }
@@ -862,7 +879,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     /// Rebuilds the menu bar item so the icon reappears when the OS has dropped it
     /// from a crowded or notched menu bar. Backs the "Show menu bar icon" button.
     func reshowStatusItem() {
-        statusController?.recreateStatusItem()
+        statusController?.recreateStatusItem(resetPlacement: true)
     }
 
     /// Quits and reopens the app. Full Disk Access only applies to a fresh
@@ -985,7 +1002,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         ))
         host.sizingOptions = .preferredContentSize
         let window = NSWindow(contentViewController: host)
-        window.title = L10n.shared.s.supportIntroTitle
+        window.title = L10n.shared.s.communityIntroTitle
         window.styleMask = [.titled, .closable, .fullSizeContentView]
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden

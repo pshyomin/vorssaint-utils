@@ -139,8 +139,6 @@ struct Strings {
     let indefinite: String
 
     // MARK: Panel — header & footer
-    let panelAwake: String
-    let panelNormalSleep: String
     let panelSettings: String
     let panelQuit: String
     let panelHotkeyHint: String
@@ -256,6 +254,33 @@ struct Strings {
     let invertMouseScrollCaption: String
     let scrollTrackpadNote: String
     let scrollActiveNow: String
+    let middleClickSection: String
+    let middleClickEnable: String
+    let middleClickEnableCaption: String
+    let middleClickDragConflict: String
+    let quickToolsTab: String
+    let quickToolShortcutToggle: String
+    let ocrName: String
+    let ocrCaption: String
+    let ocrCopied: String
+    let ocrNoText: String
+    let colorPickerName: String
+    let colorPickerCaption: String
+    let colorPickerFormatLabel: String
+    let colorPickerPickNow: String
+    let micMuteName: String
+    let micUnmuteName: String
+    let micMuteCaption: String
+    let micMutedHUD: String
+    let micUnmutedHUD: String
+    let pastePlainName: String
+    let pastePlainCaption: String
+    let launcherName: String
+    let launcherCaption: String
+    let launcherOpenNow: String
+    let launcherEditHint: String
+    let launcherAddSection: String
+    let launcherKeysHint: String
 
     // MARK: Settings — switcher
     let switcherSection: String
@@ -274,6 +299,8 @@ struct Strings {
     let dockPreviewName: String
     let dockPreviewEnable: String
     let dockPreviewEnableCaption: String
+    let dockClickMinimize: String
+    let dockClickMinimizeCaption: String
     let dockPreviewActiveNow: String
     let dockPreviewMagnificationBlocked: String
     let dockPreviewDockUnavailable: String
@@ -782,6 +809,9 @@ struct Strings {
     let cleaningMenuItem: String
     let utilitiesSection: String
     let quickControlsSection: String
+    let panelCategoryWindows: String
+    let panelCategoryInput: String
+    let panelCategoryFiles: String
     let windowMaximizeName: String
     let windowMaximizeCaption: String
     let windowMaximizeActiveNow: String
@@ -817,6 +847,9 @@ struct Strings {
     let supportIntroStarButton: String
     let supportIntroCoffeeButton: String
     let supportIntroLaterButton: String
+    let communityIntroTitle: String
+    let communityIntroMessage: String
+    let communityIntroFollowButton: String
     let updateShowcaseTitle: String
     let updateShowcaseMessage: String
     let updateShowcaseUnavailable: String
@@ -871,8 +904,6 @@ extension Strings {
         indefinitely: "Indefinidamente",
         indefinite: "Indefinida",
 
-        panelAwake: "Mac acordado",
-        panelNormalSleep: "Suspensão normal",
         panelSettings: "Ajustes",
         panelQuit: "Sair",
         panelHotkeyHint: "Atalho alterna",
@@ -927,7 +958,7 @@ extension Strings {
         settingsTitle: "Ajustes do Vorssaint",
         tabGeneral: "Geral",
         tabEnergy: "Energia",
-        tabMouse: "Mouse",
+        tabMouse: "Mouse e Trackpad",
         tabSwitcher: "Alternador",
         tabAdvanced: "Avançado",
         tabAbout: "Sobre",
@@ -977,6 +1008,33 @@ extension Strings {
         invertMouseScrollCaption: "Inverte a direção da roda do mouse.",
         scrollTrackpadNote: "O trackpad não muda: continua com a rolagem natural do macOS.",
         scrollActiveNow: "Invertendo a rolagem do mouse agora",
+        middleClickSection: "Botão do meio",
+        middleClickEnable: "Clique com três dedos vira botão do meio",
+        middleClickEnableCaption: "Pressionar o trackpad com três dedos funciona como o clique da rodinha do mouse: abre links em nova aba, fecha abas e tudo mais que o botão do meio faz.",
+        middleClickDragConflict: "O arrastar com três dedos do macOS está ativado e usa esse mesmo gesto. Desative-o nos Ajustes do Sistema em Acessibilidade, Controle do Cursor, Opções do Trackpad, e o clique do meio vai funcionar.",
+        quickToolsTab: "Ferramentas rápidas",
+        quickToolShortcutToggle: "Atalho global",
+        ocrName: "Copiar texto da tela",
+        ocrCaption: "Selecione uma área da tela e o texto reconhecido é copiado, pronto para colar.",
+        ocrCopied: "Texto copiado",
+        ocrNoText: "Nenhum texto encontrado",
+        colorPickerName: "Conta-gotas de cor",
+        colorPickerCaption: "Capture a cor de qualquer pixel da tela e copie no formato que preferir.",
+        colorPickerFormatLabel: "Formato copiado",
+        colorPickerPickNow: "Capturar cor",
+        micMuteName: "Silenciar microfone",
+        micUnmuteName: "Reativar microfone",
+        micMuteCaption: "Corta o microfone do Mac com um clique ou atalho, valendo para qualquer app.",
+        micMutedHUD: "Microfone silenciado",
+        micUnmutedHUD: "Microfone reativado",
+        pastePlainName: "Colar como texto puro",
+        pastePlainCaption: "Cola o que foi copiado sem cores, fontes ou formatação. O conteúdo original continua no clipboard.",
+        launcherName: "Painel rápido",
+        launcherCaption: "Um painel flutuante com suas ferramentas favoritas, aberto por atalho de qualquer lugar.",
+        launcherOpenNow: "Abrir painel rápido",
+        launcherEditHint: "Use o botão de ajustes para escolher, ocultar e arrastar as ferramentas.",
+        launcherAddSection: "Adicionar de volta",
+        launcherKeysHint: "Setas navegam, Enter abre, 1 a 9 abrem direto",
 
         switcherSection: "Alternador de apps",
         switcherEnable: "Usar o alternador do Vorssaint",
@@ -994,6 +1052,8 @@ extension Strings {
         dockPreviewName: "Dock Preview",
         dockPreviewEnable: "Pré-visualizar janelas no Dock",
         dockPreviewEnableCaption: "Passe o mouse em um app aberto no Dock para ver e espiar suas janelas.",
+        dockClickMinimize: "Clicar no Dock minimiza",
+        dockClickMinimizeCaption: "As janelas do app ativo são minimizadas ao clicar no ícone dele no Dock. Clique de novo para trazê-las de volta.",
         dockPreviewActiveNow: "Ativo no Dock",
         dockPreviewMagnificationBlocked: "Desative a ampliação do Dock para usar.",
         dockPreviewDockUnavailable: "Não foi possível ler os itens do Dock.",
@@ -1034,7 +1094,7 @@ extension Strings {
         autoQuitName: "Encerrar ao fechar",
         autoQuitEnable: "Encerrar o app ao fechar a última janela",
         autoQuitEnableCaption: "Fechar a última janela de um app também o encerra.",
-        autoQuitActiveNow: "Ativo e monitorando janelas",
+        autoQuitActiveNow: "Ativo agora",
         autoQuitHowTitle: "Como funciona",
         autoQuitStep1: "Feche a última janela de um app (⌘W ou o botão vermelho).",
         autoQuitStep2: "O app é encerrado sozinho. Diálogos de “salvar?” continuam aparecendo.",
@@ -1083,7 +1143,7 @@ extension Strings {
         urlCleanerName: "Limpar URL",
         urlCleanerEnable: "Limpar URLs copiadas",
         urlCleanerEnableCaption: "Remove parâmetros de rastreamento de links copiados.",
-        urlCleanerActiveNow: "Ativo e observando a área de transferência",
+        urlCleanerActiveNow: "Ativo agora",
         urlCleanerManualTitle: "Limpar agora",
         urlCleanerInputPlaceholder: "Cole uma URL",
         urlCleanerOutputPlaceholder: "A URL limpa aparece aqui",
@@ -1362,7 +1422,7 @@ extension Strings {
         monitorInterval5: "5 segundos",
         monitorPanelSection: "No painel",
         panelNavigationMode: "Navegar por seções no painel",
-        panelNavigationCaption: "Mostra uma seção por vez e coloca a navegação na parte de baixo do painel.",
+        panelNavigationCaption: "Mostra uma seção por vez. Escolha Lista para ver tudo em uma rolagem contínua.",
         panelFooterSections: "Seções",
         panelFooterList: "Lista",
         fanControlBetaShow: "Mostrar Fan Control (Beta) no painel",
@@ -1476,11 +1536,14 @@ extension Strings {
         obStepPanelTitle: "O que aparece no painel",
         obStepPanelBody: "Abra cada bloco e escolha exatamente o que mostrar quando você clica no ícone.",
         obStepPanelNavigationTitle: "Painel por seções",
-        obStepPanelNavigationBody: "O painel agora pode mostrar uma seção por vez, com a navegação na parte de baixo. A opção vem ligada nesta atualização para você testar.",
+        obStepPanelNavigationBody: "O painel agora pode mostrar uma seção por vez. Você pode mudar entre Seções e Lista nos Ajustes.",
 
         cleaningMenuItem: "Modo de limpeza",
         utilitiesSection: "Utilidades",
         quickControlsSection: "Controles",
+        panelCategoryWindows: "Janelas",
+        panelCategoryInput: "Mouse e teclado",
+        panelCategoryFiles: "Arquivos",
         windowMaximizeName: "Maximizar janelas",
         windowMaximizeCaption: "O botão verde maximiza sem criar outro Espaço.",
         windowMaximizeActiveNow: "Ativo no botão verde",
@@ -1515,6 +1578,9 @@ extension Strings {
         supportIntroStarButton: "Dar uma estrela",
         supportIntroCoffeeButton: "Buy me a coffee",
         supportIntroLaterButton: "Agora não",
+        communityIntroTitle: "Vem ver antes de todo mundo",
+        communityIntroMessage: "O Vorssaint agora atualiza uma vez por semana, com calma, pra cada novidade chegar redonda e bem testada. Só correção urgente sai na hora. Mas você não precisa esperar. No X eu mostro as prévias antes de lançar, você comenta, pede feature na DM, e o que você falar pode mudar o app. Escolhi o X porque ele traduz cada post automaticamente pro seu idioma. Vem!",
+        communityIntroFollowButton: "Seguir @vorssaint no X",
         updateShowcaseTitle: "Novidades da 3.1.4",
         updateShowcaseMessage: "Veja uma prévia rápida das principais melhorias desta atualização.",
         updateShowcaseUnavailable: "Não foi possível carregar o vídeo agora. Você ainda pode continuar.",
@@ -1568,8 +1634,6 @@ extension Strings {
         indefinitely: "Indefinitely",
         indefinite: "Indefinite",
 
-        panelAwake: "Mac awake",
-        panelNormalSleep: "Normal sleep",
         panelSettings: "Settings",
         panelQuit: "Quit",
         panelHotkeyHint: "Shortcut toggles",
@@ -1624,7 +1688,7 @@ extension Strings {
         settingsTitle: "Vorssaint Settings",
         tabGeneral: "General",
         tabEnergy: "Energy",
-        tabMouse: "Mouse",
+        tabMouse: "Mouse & Trackpad",
         tabSwitcher: "Switcher",
         tabAdvanced: "Advanced",
         tabAbout: "About",
@@ -1674,6 +1738,33 @@ extension Strings {
         invertMouseScrollCaption: "Reverses the mouse wheel direction.",
         scrollTrackpadNote: "The trackpad is untouched: it keeps macOS natural scrolling.",
         scrollActiveNow: "Inverting mouse scrolling right now",
+        middleClickSection: "Middle click",
+        middleClickEnable: "Three-finger click acts as middle click",
+        middleClickEnableCaption: "Pressing the trackpad with three fingers works like a mouse wheel click: open links in a new tab, close tabs and everything else the middle button does.",
+        middleClickDragConflict: "macOS three-finger drag is turned on and uses this same gesture. Turn it off in System Settings under Accessibility, Pointer Control, Trackpad Options, and the middle click will work.",
+        quickToolsTab: "Quick tools",
+        quickToolShortcutToggle: "Global shortcut",
+        ocrName: "Copy text from screen",
+        ocrCaption: "Select an area of the screen and the recognized text is copied, ready to paste.",
+        ocrCopied: "Text copied",
+        ocrNoText: "No text found",
+        colorPickerName: "Color picker",
+        colorPickerCaption: "Grab the color of any pixel on screen and copy it in your favorite format.",
+        colorPickerFormatLabel: "Copied format",
+        colorPickerPickNow: "Pick color",
+        micMuteName: "Mute microphone",
+        micUnmuteName: "Unmute microphone",
+        micMuteCaption: "Cuts the Mac's microphone with a click or shortcut, across every app.",
+        micMutedHUD: "Microphone muted",
+        micUnmutedHUD: "Microphone back on",
+        pastePlainName: "Paste as plain text",
+        pastePlainCaption: "Pastes what you copied without colors, fonts or formatting. The original stays on the clipboard.",
+        launcherName: "Quick panel",
+        launcherCaption: "A floating panel with your favorite tools, summoned by a shortcut from anywhere.",
+        launcherOpenNow: "Open quick panel",
+        launcherEditHint: "Use the tune button to choose, hide and drag the tools around.",
+        launcherAddSection: "Add back",
+        launcherKeysHint: "Arrows navigate, Enter opens, 1 to 9 open directly",
 
         switcherSection: "App switcher",
         switcherEnable: "Use the Vorssaint switcher",
@@ -1691,6 +1782,8 @@ extension Strings {
         dockPreviewName: "Dock Preview",
         dockPreviewEnable: "Preview windows from the Dock",
         dockPreviewEnableCaption: "Hover over an open app in the Dock to preview and peek at its windows.",
+        dockClickMinimize: "Click the Dock icon to minimize",
+        dockClickMinimizeCaption: "The active app's windows minimize when you click its Dock icon. Click again to bring them back.",
         dockPreviewActiveNow: "Active in the Dock",
         dockPreviewMagnificationBlocked: "Turn off Dock magnification to use this.",
         dockPreviewDockUnavailable: "Could not read Dock items.",
@@ -1731,7 +1824,7 @@ extension Strings {
         autoQuitName: "Quit on close",
         autoQuitEnable: "Quit an app when its last window closes",
         autoQuitEnableCaption: "Closing an app's last window also quits it.",
-        autoQuitActiveNow: "Active and watching windows",
+        autoQuitActiveNow: "Active now",
         autoQuitHowTitle: "How it works",
         autoQuitStep1: "Close an app's last window (⌘W or the red button).",
         autoQuitStep2: "The app quits on its own. “Save changes?” dialogs still appear.",
@@ -1780,7 +1873,7 @@ extension Strings {
         urlCleanerName: "Clean URL",
         urlCleanerEnable: "Clean copied URLs",
         urlCleanerEnableCaption: "Removes tracking parameters from copied links.",
-        urlCleanerActiveNow: "Active and watching the clipboard",
+        urlCleanerActiveNow: "Active now",
         urlCleanerManualTitle: "Clean now",
         urlCleanerInputPlaceholder: "Paste a URL",
         urlCleanerOutputPlaceholder: "The clean URL appears here",
@@ -2059,7 +2152,7 @@ extension Strings {
         monitorInterval5: "5 seconds",
         monitorPanelSection: "In the panel",
         panelNavigationMode: "Navigate panel by sections",
-        panelNavigationCaption: "Shows one section at a time and places navigation at the bottom of the panel.",
+        panelNavigationCaption: "Shows one section at a time. Choose List to see everything in one continuous scroll.",
         panelFooterSections: "Sections",
         panelFooterList: "List",
         fanControlBetaShow: "Show Fan Control (Beta) in the panel",
@@ -2173,11 +2266,14 @@ extension Strings {
         obStepPanelTitle: "What's in the panel",
         obStepPanelBody: "Open each block and pick exactly what shows when you click the icon.",
         obStepPanelNavigationTitle: "Section-based panel",
-        obStepPanelNavigationBody: "The panel can now show one section at a time, with navigation at the bottom. It is on for this update so you can try it.",
+        obStepPanelNavigationBody: "The panel can now show one section at a time. You can switch between Sections and List in Settings.",
 
         cleaningMenuItem: "Cleaning Mode",
         utilitiesSection: "Utilities",
         quickControlsSection: "Controls",
+        panelCategoryWindows: "Windows",
+        panelCategoryInput: "Mouse and keyboard",
+        panelCategoryFiles: "Files",
         windowMaximizeName: "Maximize windows",
         windowMaximizeCaption: "The green button maximizes without creating another Space.",
         windowMaximizeActiveNow: "Green button override active",
@@ -2212,6 +2308,9 @@ extension Strings {
         supportIntroStarButton: "Leave a star",
         supportIntroCoffeeButton: "Buy me a coffee",
         supportIntroLaterButton: "Not now",
+        communityIntroTitle: "See it before everyone else",
+        communityIntroMessage: "Vorssaint now updates once a week, so every new feature lands solid and well tested. Urgent fixes still go out right away. But you don't have to wait. On X I post previews before anything ships, you can comment, ask for features in my DMs, and what you say can change the app. I picked X because it translates every post into your language automatically. Come take a look!",
+        communityIntroFollowButton: "Follow @vorssaint on X",
         updateShowcaseTitle: "What's new in 3.1.4",
         updateShowcaseMessage: "Take a quick look at the main improvements in this update.",
         updateShowcaseUnavailable: "The video could not load right now. You can still continue.",

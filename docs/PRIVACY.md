@@ -15,6 +15,8 @@ Vorssaint is built to be local-first. Core features run on your Mac, and the app
 
 Everything Vorssaint shows you, from the CPU and memory load to the temperatures, the battery details, the network rates, the window list, per app volume and the files on the Shelf, is read locally through native macOS APIs and shown to you right there. None of it is sent anywhere, logged remotely or shared.
 
+Clipboard history, including the images and files you copy, lives in the app's local storage on your Mac and never leaves it. Copy text from screen recognizes the text entirely on device with Apple's Vision framework, and the temporary capture is deleted as soon as the text is read.
+
 When a feature needs a macOS permission such as Accessibility or Screen Recording, that access is used only for the local feature it belongs to. The [permissions guide](PERMISSIONS.md) breaks down each one.
 
 ## Network connections

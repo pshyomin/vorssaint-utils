@@ -15,7 +15,7 @@ enum NetworkProcessSupport {
     static let nettopArguments = [
         "-P", "-d", "-x",
         "-J", "bytes_in,bytes_out",
-        "-L", "2",
+        "-L", "1",
         "-s", "1",
     ]
 
@@ -48,9 +48,8 @@ enum NetworkProcessSupport {
         return parseNettopCSV(output)
     }
 
-    /// Parses `nettop -P -d -x -J bytes_in,bytes_out -L 2`.
-    /// Delta mode prints an initial cumulative section and then a delta section;
-    /// the last section is the one that represents current activity.
+    /// Parses CSV output from nettop logging mode. The last section is returned,
+    /// whether the command produced one cumulative section or multiple sections.
     static func parseNettopCSV(_ output: String) -> [NetworkProcessSample] {
         var currentSection: [NetworkProcessSample] = []
 
@@ -100,6 +99,78 @@ enum NetworkProcessSupport {
         guard let pid = pid_t(String(pidPart)) else { return nil }
         let name = String(namePart).trimmingCharacters(in: .whitespacesAndNewlines)
         return (name.isEmpty ? "pid \(pid)" : name, pid)
+    }
+}
+
+enum NetworkProcessSamplingPolicy {
+    static let leaseDuration: TimeInterval = 12
+    static let stopGrace: TimeInterval = 4
+    static let sampleInterval: TimeInterval = 5
+    static let maxDeltaGap: TimeInterval = 30
+
+    static func renewedLease(now: TimeInterval) -> TimeInterval {
+        now + leaseDuration
+    }
+
+    static func shortenedLease(currentExpiresAt: TimeInterval,
+                               now: TimeInterval) -> TimeInterval {
+        min(currentExpiresAt, now + stopGrace)
+    }
+
+    static func leaseIsActive(expiresAt: TimeInterval,
+                              now: TimeInterval) -> Bool {
+        expiresAt > now
+    }
+}
+
+struct NetworkProcessDeltaTracker {
+    private var previousAt: TimeInterval?
+    private var previousByPID: [pid_t: NetworkProcessSample] = [:]
+    private let maxGap: TimeInterval
+
+    init(maxGap: TimeInterval = NetworkProcessSamplingPolicy.maxDeltaGap) {
+        self.maxGap = maxGap
+    }
+
+    /// Whether the next `rates(from:now:)` call can produce deltas, or will
+    /// only prime the baseline and return nothing.
+    func hasBaseline(now: TimeInterval) -> Bool {
+        guard let previousAt else { return false }
+        return now > previousAt && now - previousAt <= maxGap
+    }
+
+    mutating func rates(from samples: [NetworkProcessSample],
+                        now: TimeInterval) -> [NetworkProcessSample] {
+        defer {
+            previousAt = now
+            previousByPID = Dictionary(uniqueKeysWithValues: samples.map { ($0.pid, $0) })
+        }
+
+        guard let previousAt,
+              now > previousAt,
+              now - previousAt <= maxGap
+        else { return [] }
+
+        let elapsed = now - previousAt
+        return samples.compactMap { sample in
+            guard let previous = previousByPID[sample.pid] else { return nil }
+            let bytesIn = sample.bytesIn >= previous.bytesIn
+                ? (sample.bytesIn - previous.bytesIn) / elapsed
+                : 0
+            let bytesOut = sample.bytesOut >= previous.bytesOut
+                ? (sample.bytesOut - previous.bytesOut) / elapsed
+                : 0
+            guard bytesIn > 0 || bytesOut > 0 else { return nil }
+            return NetworkProcessSample(pid: sample.pid,
+                                        name: sample.name,
+                                        bytesIn: bytesIn,
+                                        bytesOut: bytesOut)
+        }
+    }
+
+    mutating func reset() {
+        previousAt = nil
+        previousByPID = [:]
     }
 }
 

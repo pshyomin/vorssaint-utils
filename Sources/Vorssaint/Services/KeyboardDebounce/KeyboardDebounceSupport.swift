@@ -34,31 +34,115 @@ struct KeyboardDebounceConfig: Equatable {
 }
 
 struct KeyboardDebounceState {
-    private var lastAcceptedByKey: [Int64: TimeInterval] = [:]
+    enum EventKind {
+        case keyDown
+        case keyUp
+    }
+
+    private struct KeyState {
+        var isDown = false
+        var lastAcceptedPress: UInt64?
+        var lastAcceptedRelease: UInt64?
+        var lastEventTimestamp: UInt64?
+    }
+
+    private static let staleStateGapNanoseconds: UInt64 = 5_000_000_000
+
+    private var stateByKey: [Int64: KeyState] = [:]
+    private var lastAcceptedKeyCode: Int64?
 
     mutating func reset() {
-        lastAcceptedByKey.removeAll()
+        stateByKey.removeAll()
+        lastAcceptedKeyCode = nil
     }
 
     mutating func shouldSuppress(keyCode: Int64,
                                  isAutoRepeat: Bool,
+                                 event: EventKind,
                                  time: TimeInterval,
                                  config: KeyboardDebounceConfig) -> Bool {
-        guard config.enabled, !isAutoRepeat else { return false }
-        let window = Double(config.windowMs(for: keyCode)) / 1000.0
-        guard window > 0 else {
-            lastAcceptedByKey[keyCode] = time
+        let nanoseconds = max(0, (time * 1_000_000_000.0).rounded())
+        return shouldSuppress(keyCode: keyCode,
+                              isAutoRepeat: isAutoRepeat,
+                              event: event,
+                              timestampNanoseconds: UInt64(nanoseconds),
+                              config: config)
+    }
+
+    mutating func shouldSuppress(keyCode: Int64,
+                                 isAutoRepeat: Bool,
+                                 event: EventKind,
+                                 timestampNanoseconds: UInt64,
+                                 config: KeyboardDebounceConfig) -> Bool {
+        guard config.enabled else {
+            stateByKey.removeValue(forKey: keyCode)
+            if lastAcceptedKeyCode == keyCode {
+                lastAcceptedKeyCode = nil
+            }
             return false
         }
 
-        if let last = lastAcceptedByKey[keyCode],
-           time >= last,
-           time - last < window {
+        var keyState = sanitizedState(for: keyCode, timestamp: timestampNanoseconds)
+        defer {
+            keyState.lastEventTimestamp = timestampNanoseconds
+            stateByKey[keyCode] = keyState
+        }
+
+        guard event == .keyDown else {
+            if keyState.isDown {
+                keyState.isDown = false
+                keyState.lastAcceptedRelease = timestampNanoseconds
+            }
+            return false
+        }
+
+        guard !isAutoRepeat else {
+            keyState.isDown = true
+            return false
+        }
+
+        let window = UInt64(config.windowMs(for: keyCode)) * 1_000_000
+        guard window > 0 else {
+            keyState.isDown = true
+            keyState.lastAcceptedPress = timestampNanoseconds
+            lastAcceptedKeyCode = keyCode
+            return false
+        }
+
+        if keyState.isDown,
+           let press = keyState.lastAcceptedPress,
+           timestampNanoseconds >= press,
+           timestampNanoseconds - press < window {
             return true
         }
 
-        lastAcceptedByKey[keyCode] = time
+        if let release = keyState.lastAcceptedRelease,
+           lastAcceptedKeyCode == keyCode,
+           timestampNanoseconds >= release,
+           timestampNanoseconds - release < window {
+            return true
+        }
+
+        keyState.isDown = true
+        keyState.lastAcceptedPress = timestampNanoseconds
+        lastAcceptedKeyCode = keyCode
         return false
+    }
+
+    private mutating func sanitizedState(for keyCode: Int64,
+                                         timestamp: UInt64) -> KeyState {
+        var keyState = stateByKey[keyCode] ?? KeyState()
+        guard let previousTimestamp = keyState.lastEventTimestamp else {
+            return keyState
+        }
+        if timestamp < previousTimestamp
+            || timestamp - previousTimestamp > Self.staleStateGapNanoseconds {
+            keyState = KeyState()
+            if lastAcceptedKeyCode == keyCode {
+                lastAcceptedKeyCode = nil
+            }
+        }
+        return keyState
     }
 }
 

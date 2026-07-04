@@ -272,7 +272,6 @@ enum MenuBarRenderer {
                                             width: reservedWidth(for: metric, preset: preset)))
                 }
             case .memory:
-                guard let used = snapshot.memoryUsed, let total = snapshot.memoryTotal, total > 0 else { break }
                 let style = MemoryMenuBarStyle.current
                 var segments: [MenuBarSegment] = []
                 segments.append(.symbol(metric.symbolName))
@@ -280,8 +279,11 @@ enum MenuBarRenderer {
                     segments.append(.text(" "))
                     segments.append(.dot(snapshot.memoryPressure))
                 }
-                let text = " RAM " + percent(Double(used) / Double(total))
-                segments.append(.text(text))
+                if style.showsPercent {
+                    let text = " RAM " + MetricFormat.menuBarMemoryPercent(used: snapshot.memoryUsed,
+                                                                            total: snapshot.memoryTotal)
+                    segments.append(.text(text))
+                }
                 items.append(MetricItem(metric: metric,
                                         segments: segments,
                                         width: reservedWidth(for: metric, preset: preset)))
@@ -440,12 +442,15 @@ enum MenuBarRenderer {
                                                 pressure: nil)])
                 }
             case .memory:
-                guard let used = snapshot.memoryUsed, let total = snapshot.memoryTotal, total > 0 else { break }
+                let memoryStyle = MemoryMenuBarStyle.current
+                let value = memoryStyle.showsPercent
+                    ? MetricFormat.menuBarMemoryPercent(used: snapshot.memoryUsed, total: snapshot.memoryTotal)
+                    : ""
                 groups.append([.metricBlock(label: "RAM",
-                                            value: percent(Double(used) / Double(total)),
-                                            minimumValue: "100%",
+                                            value: value,
+                                            minimumValue: memoryStyle.showsPercent ? "100%" : "",
                                             style: style,
-                                            pressure: MemoryMenuBarStyle.current.showsDot ? snapshot.memoryPressure : nil)])
+                                            pressure: memoryStyle.showsDot ? snapshot.memoryPressure : nil)])
             case .network:
                 if let down = snapshot.netDownBytesPerSec, let up = snapshot.netUpBytesPerSec {
                     groups.append([.networkBlock(down: MetricFormat.bytesPerSecCompact(down),
@@ -740,7 +745,7 @@ enum MenuBarRenderer {
         let valueSize = (value as NSString).size(withAttributes: sizingValueAttrs)
         let minimumValueSize = (minimumValue as NSString).size(withAttributes: sizingValueAttrs)
         let dotDiameter: CGFloat = pressure == nil ? 0 : (style == .readable ? 5.2 : 4.8)
-        let dotGap: CGFloat = pressure == nil ? 0 : 4
+        let dotGap: CGFloat = pressure == nil || value.isEmpty ? 0 : 4
         let reservedValueWidth = max(valueSize.width, minimumValueSize.width)
         let reservedGroupWidth = dotDiameter + dotGap + reservedValueWidth
         let drawnGroupWidth = dotDiameter + dotGap + valueSize.width

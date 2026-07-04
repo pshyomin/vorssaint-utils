@@ -176,19 +176,21 @@ struct MenuBarMetricsPreview: View {
         VStack(spacing: -1) {
             Text(label)
                 .font(.system(size: style == .readable ? 7.2 : 6.6, weight: .medium))
-            HStack(spacing: pressure == nil ? 0 : 4) {
+            HStack(spacing: pressure == nil || value.isEmpty ? 0 : 4) {
                 if let pressure {
                     Circle()
                         .fill(dotColor(pressure))
                         .frame(width: style == .readable ? 5.2 : 4.8,
                                height: style == .readable ? 5.2 : 4.8)
                 }
-                Text(value)
-                    .font(.system(size: style == .readable ? 13 : 12,
-                                  weight: .semibold,
-                                  design: .monospaced))
-                    .frame(minWidth: metricValueMinWidth(minimumValue: minimumValue, style: style),
-                           alignment: .center)
+                if !value.isEmpty {
+                    Text(value)
+                        .font(.system(size: style == .readable ? 13 : 12,
+                                      weight: .semibold,
+                                      design: .monospaced))
+                        .frame(minWidth: metricValueMinWidth(minimumValue: minimumValue, style: style),
+                               alignment: .center)
+                }
             }
         }
         .foregroundStyle(.white)

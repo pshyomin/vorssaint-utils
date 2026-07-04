@@ -13,6 +13,10 @@ enum AppInfo {
     /// the community keeps it alive. Confirm the handle is exactly right before
     /// shipping to main.
     static let donateURL = URL(string: "https://buymeacoffee.com/vorssaint")!
+    /// Where previews of upcoming features are posted between weekly releases.
+    /// Handle taken from the owner's GitHub profile (twitter_username).
+    static let communityHandle = "@vorssaint"
+    static let communityURL = URL(string: "https://x.com/vorssaint")!
 
     /// The bundle version. The fallback only applies to the bare binary
     /// (e.g. `--selftest`), never the shipped app, which reads its Info.plist.

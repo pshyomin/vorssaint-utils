@@ -177,7 +177,8 @@ final class ShelfService: ObservableObject {
                 // Not our hotkey: hand it back so the keep-awake handler on the
                 // same dispatch target still receives its shortcut. Returning noErr
                 // would swallow it.
-                guard id.id == 2 else { return OSStatus(eventNotHandledErr) }
+                guard id.signature == 0x5655_5348, id.id == 2
+                else { return OSStatus(eventNotHandledErr) }
                 let service = Unmanaged<ShelfService>.fromOpaque(userData).takeUnretainedValue()
                 DispatchQueue.main.async { service.toggle() }
                 return noErr

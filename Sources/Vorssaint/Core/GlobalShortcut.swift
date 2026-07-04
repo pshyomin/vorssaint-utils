@@ -146,6 +146,31 @@ struct GlobalShortcut: Equatable, Hashable {
                                                           modifiers: [.control, .option])
     static let windowLayoutRestoreDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_R),
                                                            modifiers: [.control, .option])
+    static let windowLayoutLeftThirdDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_D),
+                                                             modifiers: [.control, .option])
+    static let windowLayoutCenterThirdDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_F),
+                                                               modifiers: [.control, .option])
+    static let windowLayoutRightThirdDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_G),
+                                                              modifiers: [.control, .option])
+    static let windowLayoutLeftTwoThirdsDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_E),
+                                                                 modifiers: [.control, .option])
+    static let windowLayoutRightTwoThirdsDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_T),
+                                                                  modifiers: [.control, .option])
+    static let windowLayoutNextDisplayDefault = GlobalShortcut(keyCode: Int64(kVK_RightArrow),
+                                                               modifiers: [.control, .option, .command])
+    // Quick tools. Paste plain follows the universal "Paste and Match Style"
+    // combination; the others use the free ⌃⌥⌘ letters.
+    static let pastePlainDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_V),
+                                                  modifiers: [.shift, .option, .command])
+    static let colorPickerDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_C),
+                                                   modifiers: [.control, .option, .command])
+    static let screenOCRDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_T),
+                                                 modifiers: [.control, .option, .command])
+    static let micMuteDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_M),
+                                               modifiers: [.control, .option, .command])
+    // V for Vorssaint: the quick launcher's own combination.
+    static let quickLauncherDefault = GlobalShortcut(keyCode: Int64(kVK_ANSI_V),
+                                                     modifiers: [.control, .command])
 
     static func saved(for key: String, fallback: GlobalShortcut) -> GlobalShortcut {
         if let raw = UserDefaults.standard.string(forKey: key),
@@ -281,6 +306,11 @@ enum GlobalShortcutRole: CaseIterable, Identifiable {
     case switcherWindow
     case clipboard
     case soundOutputSwitcher
+    case pastePlain
+    case colorPicker
+    case screenOCR
+    case micMute
+    case quickLauncher
 
     var id: String { storageKey }
 
@@ -292,6 +322,11 @@ enum GlobalShortcutRole: CaseIterable, Identifiable {
         case .switcherWindow: return DefaultsKey.switcherWindowShortcut
         case .clipboard: return DefaultsKey.clipboardHistoryShortcut
         case .soundOutputSwitcher: return DefaultsKey.soundOutputSwitcherShortcut
+        case .pastePlain: return DefaultsKey.pastePlainShortcut
+        case .colorPicker: return DefaultsKey.colorPickerShortcut
+        case .screenOCR: return DefaultsKey.screenOCRShortcut
+        case .micMute: return DefaultsKey.micMuteShortcut
+        case .quickLauncher: return DefaultsKey.quickLauncherShortcut
         }
     }
 
@@ -303,6 +338,11 @@ enum GlobalShortcutRole: CaseIterable, Identifiable {
         case .switcherWindow: return .switcherWindowDefault
         case .clipboard: return .clipboardDefault
         case .soundOutputSwitcher: return .soundOutputSwitcherDefault
+        case .pastePlain: return .pastePlainDefault
+        case .colorPicker: return .colorPickerDefault
+        case .screenOCR: return .screenOCRDefault
+        case .micMute: return .micMuteDefault
+        case .quickLauncher: return .quickLauncherDefault
         }
     }
 
@@ -318,6 +358,11 @@ enum GlobalShortcutRole: CaseIterable, Identifiable {
         case .switcherWindow: return strings.switcherShortcutHintWindows
         case .clipboard: return "Clipboard"
         case .soundOutputSwitcher: return strings.soundOutputSwitcherTitle
+        case .pastePlain: return strings.pastePlainName
+        case .colorPicker: return strings.colorPickerName
+        case .screenOCR: return strings.ocrName
+        case .micMute: return strings.micMuteName
+        case .quickLauncher: return strings.launcherName
         }
     }
 

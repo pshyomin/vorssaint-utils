@@ -11,9 +11,8 @@ import CoreGraphics
 /// wheel ticks), appended at the tail, flipping only the line delta.
 ///
 /// Wheel detection: discrete events (`isContinuous == 0`) are wheels; events
-/// flagged continuous are wheels only when they carry no gesture phase at all
-/// (covers drivers that synthesize continuous wheel scrolling). Toggling takes
-/// effect immediately. Requires Accessibility.
+/// flagged continuous are wheels only when they carry no gesture phase at all.
+/// Toggling takes effect immediately. Requires Accessibility.
 final class ScrollInverter: ObservableObject {
     static let shared = ScrollInverter()
 
@@ -22,6 +21,9 @@ final class ScrollInverter: ObservableObject {
 
     private var tap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    /// Timestamp (ns, event clock) of the last event carrying a gesture phase —
+    /// only touch devices emit those. Read/written solely on the tap callback.
+    private var lastGesturePhaseTimestamp: UInt64?
 
     private init() {}
 
@@ -89,22 +91,35 @@ final class ScrollInverter: ObservableObject {
         }
         guard type == .scrollWheel else { return Unmanaged.passUnretained(event) }
 
-        if event.getIntegerValueField(.scrollWheelEventIsContinuous) == 0 {
-            // Classic wheel tick: flip the line delta and let the window
-            // server derive the rest. Vertical only.
-            event.setIntegerValueField(.scrollWheelEventDeltaAxis1,
-                                       value: -event.getIntegerValueField(.scrollWheelEventDeltaAxis1))
-        } else if event.getIntegerValueField(.scrollWheelEventMomentumPhase) == 0,
-                  event.getIntegerValueField(.scrollWheelEventScrollPhase) == 0,
-                  event.getDoubleValueField(.scrollWheelEventScrollCount) == 0 {
-            // Continuous but phase-less: a driver-synthesized wheel event
-            // (Logitech & friends). Touch devices always carry phases.
-            event.setIntegerValueField(.scrollWheelEventDeltaAxis1,
-                                       value: -event.getIntegerValueField(.scrollWheelEventDeltaAxis1))
-            event.setIntegerValueField(.scrollWheelEventPointDeltaAxis1,
-                                       value: -event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1))
-            event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1,
-                                      value: -event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1))
+        let traits = ScrollWheelEventTraits(
+            isContinuous: event.getIntegerValueField(.scrollWheelEventIsContinuous) != 0,
+            momentumPhase: event.getIntegerValueField(.scrollWheelEventMomentumPhase),
+            scrollPhase: event.getIntegerValueField(.scrollWheelEventScrollPhase),
+            scrollCount: event.getIntegerValueField(.scrollWheelEventScrollCount)
+        )
+        let timestamp = UInt64(event.timestamp)
+        let secondsSinceGesturePhase = lastGesturePhaseTimestamp.map {
+            Double(timestamp &- $0) / 1_000_000_000.0
+        }
+        if traits.momentumPhase != 0 || traits.scrollPhase != 0 {
+            lastGesturePhaseTimestamp = timestamp
+        }
+
+        if ScrollInverterSupport.shouldInvertMouseWheel(traits,
+                                                        secondsSinceLastGesturePhase: secondsSinceGesturePhase) {
+            // All three deltas must be captured BEFORE any set: writing the
+            // line delta makes the system rederive the point and fixed-point
+            // fields from it, so negating a re-read value flips it back to
+            // positive and the inversion silently cancels itself on exactly
+            // the fields apps use for continuous events. Vertical only.
+            let line = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
+            let point = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
+            let fixedPoint = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
+            event.setIntegerValueField(.scrollWheelEventDeltaAxis1, value: -line)
+            if traits.isContinuous {
+                event.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: -point)
+                event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1, value: -fixedPoint)
+            }
         }
         return Unmanaged.passUnretained(event)
     }

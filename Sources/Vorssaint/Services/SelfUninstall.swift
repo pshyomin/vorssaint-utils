@@ -68,6 +68,16 @@ enum SelfUninstall {
         AutoQuitService.shared.suspend()
         FinderCutPaste.shared.suspend()
         KeyboardDebounceService.shared.suspend()
+        DockClickService.shared.suspend()
+        MiddleClickService.shared.suspend()
+        PastePlainService.shared.suspend()
+        ColorSamplerService.shared.suspend()
+        QuickLauncherService.shared.suspend()
+        ScreenTextService.shared.suspend()
+        // Leaving the mic cut after the app is gone would strand the user
+        // with a silent input and no indicator anywhere.
+        MicMuteService.shared.setMuted(false)
+        MicMuteService.shared.suspend()
         CleaningModeManager.shared.deactivate()
     }
 
@@ -98,6 +108,8 @@ enum SelfUninstall {
         let home = NSHomeDirectory()
         try? FileManager.default.removeItem(atPath: "\(home)/Library/Preferences/\(id).plist")
         try? FileManager.default.removeItem(atPath: "\(home)/Library/Saved Application State/\(id).savedState")
+        // Clipboard images and any other app-owned data live here.
+        try? FileManager.default.removeItem(atPath: "\(home)/Library/Application Support/\(id)")
     }
 
     /// Moves the app's own bundle to the Trash after it quits, then quits. The

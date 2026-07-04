@@ -6,9 +6,13 @@ import SwiftUI
 struct ClipboardSettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var history = ClipboardHistoryService.shared
+    @ObservedObject private var pastePlain = PastePlainService.shared
+    @ObservedObject private var permissions = Permissions.shared
+    @AppStorage(DefaultsKey.pastePlainEnabled) private var pastePlainEnabled = false
     @AppStorage(DefaultsKey.clipboardHistoryEnabled) private var enabled = false
     @AppStorage(DefaultsKey.clipboardHistoryLimit) private var limit = 50
     @AppStorage(DefaultsKey.clipboardHistorySkipSensitive) private var skipSensitive = true
+    @AppStorage(DefaultsKey.clipboardHistoryIncludeImagesFiles) private var includeImagesFiles = true
     @AppStorage(DefaultsKey.clipboardHistoryShortcutEnabled) private var shortcutEnabled = true
     @AppStorage(DefaultsKey.panelUtilityClipboard) private var showInPanel = true
 
@@ -37,6 +41,10 @@ struct ClipboardSettings: View {
             }
 
             Section {
+                Toggle(text.includeImagesFiles, isOn: $includeImagesFiles)
+                Text(text.includeImagesFilesCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Toggle(text.skipSensitive, isOn: $skipSensitive)
                 Text(text.skipSensitiveCaption)
                     .font(.caption)
@@ -47,6 +55,30 @@ struct ClipboardSettings: View {
                     }
                 }
                 Toggle(text.showInPanel, isOn: $showInPanel)
+            }
+
+            Section {
+                Toggle(l10n.s.pastePlainName, isOn: $pastePlainEnabled)
+                    .onChange(of: pastePlainEnabled) { _, _ in
+                        PastePlainService.shared.syncWithPreferences()
+                    }
+                Text(l10n.s.pastePlainCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ShortcutPreferenceRow(role: .pastePlain,
+                                      isEnabled: pastePlainEnabled) {
+                    PastePlainService.shared.syncWithPreferences()
+                }
+                if pastePlainEnabled, pastePlain.shortcutRegistrationFailed {
+                    Text(l10n.s.shortcutUnavailable)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+                if pastePlainEnabled, !permissions.accessibility {
+                    PermissionRow(kind: .accessibility)
+                }
+            } header: {
+                Text(l10n.s.pastePlainName)
             }
 
             Section(text.shortcut) {

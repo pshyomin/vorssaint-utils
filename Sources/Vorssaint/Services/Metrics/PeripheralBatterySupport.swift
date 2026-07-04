@@ -269,3 +269,15 @@ enum PeripheralBatterySupport {
         return (first.kind.menuLabel, "\(first.percent)%\(extra)")
     }
 }
+
+enum PeripheralBatteryRefreshPolicy {
+    static func shouldStartBluetoothRefresh(now: TimeInterval,
+                                            lastStartedAt: TimeInterval,
+                                            lastFinishedAt: TimeInterval,
+                                            isRunning: Bool,
+                                            interval: TimeInterval) -> Bool {
+        guard !isRunning else { return false }
+        let lastAttempt = max(lastStartedAt, lastFinishedAt)
+        return now - lastAttempt >= interval
+    }
+}

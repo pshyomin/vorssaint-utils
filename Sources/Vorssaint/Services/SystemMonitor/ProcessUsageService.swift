@@ -58,7 +58,8 @@ final class ProcessUsageService {
     private var gpuLoading = false
     private var energyLoading = false
     private var networkLoading = false
-    private var networkMonitorUsers = 0
+    private var networkLeaseExpiresAt: TimeInterval = 0
+    private var networkDeltaTracker = NetworkProcessDeltaTracker()
     private let networkSamplerLock = NSLock()
     private var networkSamplerRunning = false
     private var networkSamplerGeneration = 0
@@ -101,35 +102,41 @@ final class ProcessUsageService {
     }
 
     func startNetworkMonitoring() {
+        let now = ProcessInfo.processInfo.systemUptime
         cacheLock.lock()
-        networkMonitorUsers += 1
-        networkLoading = true
-        let shouldStartSampler = networkMonitorUsers == 1
-        cacheLock.unlock()
-        if shouldStartSampler {
-            startNetworkSampler()
+        networkLeaseExpiresAt = NetworkProcessSamplingPolicy.renewedLease(now: now)
+        if networkCache?.rows.isEmpty ?? true {
+            networkLoading = true
         }
+        cacheLock.unlock()
+        startNetworkSampler()
     }
 
     func stopNetworkMonitoring(force: Bool = false) {
-        var shouldStopSampler = false
+        let now = ProcessInfo.processInfo.systemUptime
         cacheLock.lock()
-        networkMonitorUsers = force ? 0 : max(0, networkMonitorUsers - 1)
-        if networkMonitorUsers == 0 {
+        if force {
+            networkLeaseExpiresAt = 0
             networkLoading = false
-            shouldStopSampler = true
+            networkDeltaTracker.reset()
+        } else {
+            networkLeaseExpiresAt = NetworkProcessSamplingPolicy.shortenedLease(
+                currentExpiresAt: networkLeaseExpiresAt,
+                now: now
+            )
         }
         cacheLock.unlock()
-        if shouldStopSampler {
+        if force {
             stopNetworkSampler()
         }
     }
 
     var networkMonitoringIsWarmingUp: Bool {
+        let now = ProcessInfo.processInfo.systemUptime
         cacheLock.lock()
         defer { cacheLock.unlock() }
         let hasCachedRows = networkCache?.rows.isEmpty == false
-        return networkMonitorUsers > 0 && networkLoading && !hasCachedRows
+        return networkMonitoringActive(now: now) && networkLoading && !hasCachedRows
     }
 
     func canActivate(_ row: ProcessUsage) -> Bool {
@@ -200,7 +207,10 @@ final class ProcessUsageService {
     func topNetwork(limit: Int = 5) -> [ProcessUsage] {
         let now = ProcessInfo.processInfo.systemUptime
         cacheLock.lock()
-        let monitoring = networkMonitorUsers > 0
+        let monitoring = networkMonitoringActive(now: now)
+        if monitoring {
+            networkLeaseExpiresAt = NetworkProcessSamplingPolicy.renewedLease(now: now)
+        }
         if let cached = limitedRows(networkCache, limit: limit, now: now, maxAge: monitoring ? staleCacheSeconds : cacheFreshSeconds) {
             cacheLock.unlock()
             return cached
@@ -211,22 +221,8 @@ final class ProcessUsageService {
             startNetworkSampler()
             return []
         }
-        networkLoading = true
         cacheLock.unlock()
-
-        let samples = NetworkProcessSupport.currentActivitySamples()
-        let rows = groupedNetworkByApp(samples)
-
-        cacheLock.lock()
-        defer { cacheLock.unlock() }
-        networkLoading = false
-        if rows.isEmpty,
-           let cached = limitedRows(networkCache, limit: limit, now: now, maxAge: staleCacheSeconds),
-           !cached.isEmpty {
-            return cached
-        }
-        networkCache = cachedRows(from: rows)
-        return Array(rows.prefix(limit))
+        return []
     }
 
     private func startNetworkSampler() {
@@ -252,10 +248,23 @@ final class ProcessUsageService {
     private func scheduleNetworkSample(generation: Int, delay: TimeInterval) {
         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self, self.networkSamplerIsCurrent(generation) else { return }
+            guard self.networkLeaseIsCurrent() else {
+                self.stopNetworkSampler()
+                return
+            }
             let samples = NetworkProcessSupport.currentActivitySamples()
             guard self.networkSamplerIsCurrent(generation) else { return }
+            guard self.networkLeaseIsCurrent() else {
+                self.stopNetworkSampler()
+                return
+            }
             self.publishNetworkSamples(samples)
-            self.scheduleNetworkSample(generation: generation, delay: 0.5)
+            guard self.networkLeaseIsCurrent() else {
+                self.stopNetworkSampler()
+                return
+            }
+            self.scheduleNetworkSample(generation: generation,
+                                       delay: NetworkProcessSamplingPolicy.sampleInterval)
         }
     }
 
@@ -266,11 +275,34 @@ final class ProcessUsageService {
         return current
     }
 
-    private func publishNetworkSamples(_ samples: [NetworkProcessSample]) {
-        let rows = groupedNetworkByApp(samples)
+    private func networkLeaseIsCurrent() -> Bool {
         let now = ProcessInfo.processInfo.systemUptime
         cacheLock.lock()
-        networkLoading = false
+        let current = networkMonitoringActive(now: now)
+        if !current {
+            networkLoading = false
+            networkDeltaTracker.reset()
+        }
+        cacheLock.unlock()
+        return current
+    }
+
+    private func publishNetworkSamples(_ samples: [NetworkProcessSample]) {
+        let now = ProcessInfo.processInfo.systemUptime
+        cacheLock.lock()
+        // A priming sample only records the baseline and yields no rates; keep
+        // the warming-up state until a real delta exists, or the UI would show
+        // "no activity" for the first ~5 s even during a heavy download.
+        let hadBaseline = networkDeltaTracker.hasBaseline(now: now)
+        let rateSamples = networkDeltaTracker.rates(from: samples, now: now)
+        if hadBaseline {
+            networkLoading = false
+        }
+        cacheLock.unlock()
+
+        let rows = groupedNetworkByApp(rateSamples)
+
+        cacheLock.lock()
         if rows.isEmpty,
            let cache = networkCache,
            !cache.rows.isEmpty,
@@ -280,6 +312,11 @@ final class ProcessUsageService {
         }
         networkCache = cachedRows(from: rows)
         cacheLock.unlock()
+    }
+
+    private func networkMonitoringActive(now: TimeInterval) -> Bool {
+        NetworkProcessSamplingPolicy.leaseIsActive(expiresAt: networkLeaseExpiresAt,
+                                                   now: now)
     }
 
     // MARK: - CPU

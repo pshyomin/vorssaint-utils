@@ -41,12 +41,14 @@ On macOS 26 and newer the slider takes on the Liquid Glass look, and earlier ver
 ### 🪟 Move windows and files around
 
 - **Window switcher.** A richer spin on ⌘Tab with live thumbnails, including more than one window from the same app.
-- **Window Layout.** Move the active window to halves, corners, center or the usable screen with optional shortcuts.
+- **Window Layout.** Move the active window to halves, thirds, corners, center or the usable screen, each with its own optional shortcut.
+- **Dock Preview.** Hover a Dock icon to peek at that app's windows and click straight into the one you want.
+- **Dock click to minimize.** Click the Dock icon of the app you are using and its windows minimize, like a classic taskbar. Click again and they come right back.
 - **Shelf.** Park files, images, text and links near your cursor for a moment, then drag them wherever they belong later on.
 - **Finder cut and paste.** Use ⌘X and ⌘V to move selected files, while text fields keep their usual shortcuts.
 - **Quit on close.** Let an app quit when its last window closes, with exceptions for the apps you want to leave running.
 - **Green button maximizer.** An optional take on the green button that keeps the window in the current Space and puts it back to its old size on the next click.
-- **Clipboard history.** Keep a local text history with pinned items, search, manual ordering and quick paste shortcuts.
+- **Clipboard history.** Keep a local history of copied text, images and files, with pinned items, search, manual ordering and quick paste shortcuts.
 
 <p align="center"><img src="docs/assets/readme/window-switcher.gif" alt="Window switcher with live thumbnails" width="460"></p>
 
@@ -56,17 +58,27 @@ Run a timer or stay up until you say stop. Closed lid mode is there for when you
 
 <p align="center"><img src="docs/assets/readme/keep-awake-lid-closed.png" alt="Keep awake and closed lid controls" width="460"></p>
 
+### 🧰 Quick tools, one shortcut away
+
+Press ⌃⌘V anywhere and a small floating panel opens with your favorite tools one click or key away. Hide the ones you never use, drag the rest into your order, and the everyday tools run right inside it.
+
+- **Copy text from screen.** Select any area and the text in it is recognized offline and lands on your clipboard, ready to paste.
+- **Color picker.** Grab the color of any pixel with the system loupe and copy it as HEX, RGB, HSL or SwiftUI code.
+- **Mute microphone.** One click or a global shortcut cuts the Mac's input in every app, and the muted state survives switching devices.
+- **Paste as plain text.** An optional shortcut pastes without colors, fonts or links, and the original formatting stays on the clipboard.
+
 ### 🧹 Tidy up and fine tune
 
 - **Uninstaller.** Drop an app onto Settings, look over the caches, preferences and logs it left around, then move them all to the Trash together.
 - **Clean URL.** Strip the tracking junk out of copied links, with an option to do it automatically.
 - **Cleaning Mode.** Lock the keyboard for a quick wipe down and unlock from the overlay or a repeated key tap.
 - **Scroll direction.** Flip the mouse wheel on its own without touching the trackpad and its natural scrolling.
+- **Middle click.** Press the trackpad with three fingers for a real middle click, so wheel-click tricks work without a mouse.
 - **Fan Control beta.** A safe testing entry is in place, with the manual controls held back until each Mac model is checked out properly.
 
 ### 🌍 Made to feel at home
 
-Vorssaint speaks nine languages and you can switch between them anytime in Settings. The compact panel lets you choose between a plain list and grouped sections, and you can tuck away the parts you rarely use, then bring them back from the same spot.
+Vorssaint speaks twelve languages and you can switch between them anytime in Settings. The compact panel lets you choose between a plain list and grouped sections, and you can tuck away the parts you rarely use, then bring them back from the same spot.
 
 ## Install
 
@@ -94,8 +106,8 @@ Every macOS permission is optional, and the first run walks you through each one
 
 | Permission | Used by | Without it |
 |---|---|---|
-| Accessibility | Scroll direction, Window Layout, the switcher, Dock Preview, Finder cut and paste, quit on close | Those features stay off |
-| Screen Recording | Window titles and thumbnails in the switcher and Dock Preview | Previews fall back or stay unavailable |
+| Accessibility | Scroll direction, Window Layout, the switcher, Dock Preview, Dock click to minimize, middle click, paste as plain text, Finder cut and paste, quit on close | Those features stay off |
+| Screen Recording | Window titles and thumbnails in the switcher and Dock Preview, copy text from screen | Previews fall back or stay unavailable |
 | System Audio Recording | Per app volume and output routing in the mixer | Apps stay on normal system audio |
 | Notifications | Keep awake, battery, Monitor and update alerts | The app stays silent |
 | Full Disk Access (optional) | A deeper uninstaller scan | It scans the reachable places only |

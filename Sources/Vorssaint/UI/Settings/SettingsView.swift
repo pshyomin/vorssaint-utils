@@ -9,7 +9,7 @@ import SwiftUI
 /// the Features section, so every feature gets its own page.
 enum SettingsPage: Hashable {
     case general, energy, monitor
-    case mouse, switcher, keyDebounce, cutPaste, autoQuit, uninstaller, urlCleaner, homebrew, media, clipboard, windowLayout, shelf
+    case mouse, switcher, keyDebounce, cutPaste, autoQuit, uninstaller, urlCleaner, homebrew, media, clipboard, windowLayout, shelf, quickTools
     case advanced, about, releaseNotes, support
 }
 
@@ -51,6 +51,7 @@ struct SettingsView: View {
 
                 Section(categories.utilities) {
                     Label(FeatureStrings.clipboard(l10n.language).title, systemImage: "doc.on.clipboard").tag(SettingsPage.clipboard)
+                    Label(l10n.s.quickToolsTab, systemImage: "wand.and.rays").tag(SettingsPage.quickTools)
                     Label(l10n.s.shelfName, systemImage: "tray.full").tag(SettingsPage.shelf)
                     Label(l10n.s.uninstallerName, systemImage: "trash").tag(SettingsPage.uninstaller)
                     Label(l10n.s.urlCleanerName, systemImage: "link").tag(SettingsPage.urlCleaner)
@@ -92,6 +93,7 @@ struct SettingsView: View {
         case .homebrew: HomebrewSettings()
         case .media: MediaSettings()
         case .clipboard: ClipboardSettings()
+        case .quickTools: QuickToolsSettings()
         case .windowLayout: WindowLayoutSettings()
         case .shelf: ShelfSettings()
         case .advanced: AdvancedSettings()
@@ -111,6 +113,7 @@ struct GeneralSettings: View {
     @State private var loginError: String?
     @AppStorage(DefaultsKey.hotkeyEnabled) private var hotkeyEnabled = true
     @AppStorage(DefaultsKey.showCountdown) private var showCountdown = false
+    @AppStorage(DefaultsKey.panelNavigationEnabled) private var panelNavigationEnabled = true
 
     var body: some View {
         Form {
@@ -146,6 +149,17 @@ struct GeneralSettings: View {
                     appDelegate()?.reshowStatusItem()
                 }
                 Text(l10n.s.showMenuBarIconCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section(l10n.s.monitorPanelSection) {
+                Picker(l10n.s.panelNavigationMode, selection: $panelNavigationEnabled) {
+                    Text(l10n.s.panelFooterSections).tag(true)
+                    Text(l10n.s.panelFooterList).tag(false)
+                }
+                .pickerStyle(.segmented)
+
+                Text(l10n.s.panelNavigationCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -344,7 +358,9 @@ struct MouseSettings: View {
     @ObservedObject private var l10n = L10n.shared
     @ObservedObject private var permissions = Permissions.shared
     @ObservedObject private var inverter = ScrollInverter.shared
+    @ObservedObject private var middleClick = MiddleClickService.shared
     @AppStorage(DefaultsKey.scrollInverterEnabled) private var inverterEnabled = false
+    @AppStorage(DefaultsKey.middleClickEnabled) private var middleClickEnabled = false
 
     var body: some View {
         Form {
@@ -369,13 +385,30 @@ struct MouseSettings: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            if inverterEnabled, !permissions.accessibility {
+            Section(l10n.s.middleClickSection) {
+                Toggle(l10n.s.middleClickEnable, isOn: $middleClickEnabled)
+                    .onChange(of: middleClickEnabled) { _, _ in
+                        MiddleClickService.shared.syncWithPreferences()
+                    }
+                Text(l10n.s.middleClickEnableCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if middleClickEnabled, middleClick.systemDragGestureConflict {
+                    Text(l10n.s.middleClickDragConflict)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+            }
+            if inverterEnabled || middleClickEnabled, !permissions.accessibility {
                 Section(l10n.s.permissionRequired) {
                     PermissionRow(kind: .accessibility)
                 }
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            MiddleClickService.shared.refreshDragGestureConflict()
+        }
     }
 }
 
@@ -390,6 +423,7 @@ struct SwitcherSettings: View {
     @AppStorage(DefaultsKey.switcherMergeTabs) private var switcherMergeTabs = false
     @AppStorage(DefaultsKey.switcherShowWindowlessFinder) private var switcherShowWindowlessFinder = true
     @AppStorage(DefaultsKey.dockPreviewEnabled) private var dockPreviewEnabled = false
+    @AppStorage(DefaultsKey.dockClickMinimize) private var dockClickMinimize = false
     @AppStorage(DefaultsKey.previewSize) private var previewSize = "normal"
 
     var body: some View {
@@ -447,6 +481,13 @@ struct SwitcherSettings: View {
                 Text(dockPreviewCaption)
                     .font(.caption)
                     .foregroundStyle(dockPreviewWarning ? .orange : .secondary)
+                Toggle(l10n.s.dockClickMinimize, isOn: $dockClickMinimize)
+                    .onChange(of: dockClickMinimize) { _, _ in
+                        DockClickService.shared.syncWithPreferences()
+                    }
+                Text(l10n.s.dockClickMinimizeCaption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             } header: {
                 Text(l10n.s.dockPreviewName)
             }
