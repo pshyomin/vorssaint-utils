@@ -11,10 +11,8 @@ import UniformTypeIdentifiers
 struct MonitorSettings: View {
     @ObservedObject private var l10n = L10n.shared
 
-    @AppStorage(DefaultsKey.menuBarMemory) private var menuBarMemory = false
     @AppStorage(DefaultsKey.menuBarCombineTemperatures) private var combineTemperatures = true
     @AppStorage(DefaultsKey.menuBarSeparateMetrics) private var separateMetrics = false
-    @AppStorage(DefaultsKey.menuBarMemoryStyle) private var memoryStyle = "percent"
     @AppStorage(DefaultsKey.monitorInterval) private var interval = 2
     @AppStorage(DefaultsKey.temperatureUnit) private var temperatureUnit = TemperatureUnit.celsius.rawValue
     @AppStorage(DefaultsKey.monitorShowFanControlBeta) private var showFanControlBeta = false
@@ -41,11 +39,6 @@ struct MonitorSettings: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 MenuBarMetricOrderEditor()
-                if menuBarMemory {
-                    Toggle(l10n.s.monitorMemoryPressureDot,
-                           isOn: Binding(get: { memoryStyle != "percent" },
-                                         set: { memoryStyle = $0 ? "both" : "percent" }))
-                }
                 Text(l10n.s.monitorMenuBarCaption)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -98,7 +91,6 @@ struct MonitorSettings: View {
         .onAppear {
             SystemMonitor.shared.panelDidAppear()
             interval = Defaults.sanitizedMonitorInterval(interval)
-            memoryStyle = Defaults.sanitizedMenuBarMemoryStyle(memoryStyle)
             if TemperatureUnit(rawValue: temperatureUnit) == nil {
                 temperatureUnit = TemperatureUnit.celsius.rawValue
             }
@@ -156,6 +148,10 @@ private struct MenuBarMetricOrderEditor: View {
                     }
                     .frame(height: 32)
 
+                    if metric == .memory {
+                        MemoryMenuBarOrderOption()
+                    }
+
                     if metric == .network {
                         NetworkMenuBarOrderOption()
                     }
@@ -169,6 +165,50 @@ private struct MenuBarMetricOrderEditor: View {
         .padding(.vertical, 2)
         .onAppear { order = MenuBarMetric.order(in: .standard) }
         .onChange(of: metricOrder) { _, _ in order = MenuBarMetric.order(in: .standard) }
+    }
+}
+
+private struct MemoryMenuBarOrderOption: View {
+    @ObservedObject private var l10n = L10n.shared
+    @AppStorage(DefaultsKey.menuBarMemory) private var menuBarMemory = false
+    @AppStorage(DefaultsKey.menuBarMemoryStyle) private var memoryStyle = "percent"
+
+    var body: some View {
+        if menuBarMemory {
+            HStack(spacing: 8) {
+                Text(l10n.s.monitorMemoryPressureDot)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                Button {
+                    memoryStyle = showsPressureDot ? "percent" : "both"
+                } label: {
+                    ZStack(alignment: showsPressureDot ? .trailing : .leading) {
+                        Capsule()
+                            .fill(showsPressureDot ? Color.accentColor : Color.secondary.opacity(0.28))
+                            .frame(width: 28, height: 16)
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 12, height: 12)
+                            .padding(2)
+                    }
+                    .frame(width: 30, height: 20)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help(l10n.s.monitorMemoryPressureDot)
+            }
+            .padding(.leading, 58)
+            .padding(.trailing, 4)
+            .padding(.bottom, 7)
+            .onAppear {
+                memoryStyle = Defaults.sanitizedMenuBarMemoryStyle(memoryStyle)
+            }
+        }
+    }
+
+    private var showsPressureDot: Bool {
+        Defaults.sanitizedMenuBarMemoryStyle(memoryStyle) != "percent"
     }
 }
 
