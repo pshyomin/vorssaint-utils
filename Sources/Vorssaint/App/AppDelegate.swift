@@ -897,8 +897,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     /// Rebuilds the menu bar item so the icon reappears when the OS has dropped it
     /// from a crowded or notched menu bar. Backs the "Show menu bar icon" button.
-    /// The rebuild can silently lose to a full bar or to a menu bar manager
-    /// (Ice, Bartender) stuffing the fresh item into its hidden section, so
+    /// The rebuild can silently lose to a full bar or to a menu bar manager app
+    /// stuffing the fresh item into its hidden section, so
     /// after the frame settles this checks the icon really made it on screen
     /// and, if not, says so instead of looking like the button did nothing.
     func reshowStatusItem() {
@@ -922,20 +922,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         }
     }
 
-    /// Known menu bar organizers; any of them can be holding the icon in its
-    /// hidden section, which explains it never reappearing on this machine.
-    private static let menuBarManagerBundlePrefixes: [(prefix: String, name: String)] = [
-        ("com.jordanbaird.Ice", "Ice"),
-        ("com.surteesstudios.Bartender", "Bartender"),
-        ("com.dwarvesv.minimalbar", "Hidden Bar"),
-        ("com.mortenjust.Dozer", "Dozer"),
+    /// Known menu bar organizers, by bundle id; any of them can be holding
+    /// the icon in its hidden section, which explains it never reappearing
+    /// on this machine. The hint names whichever one is running by its own
+    /// localized app name.
+    private static let menuBarManagerBundlePrefixes = [
+        "com.jordanbaird.Ice",
+        "com.surteesstudios.Bartender",
+        "com.dwarvesv.minimalbar",
+        "com.mortenjust.Dozer",
     ]
 
     private static func runningMenuBarManagerName() -> String? {
         for app in NSWorkspace.shared.runningApplications {
             guard let bundleID = app.bundleIdentifier else { continue }
-            if let match = menuBarManagerBundlePrefixes.first(where: { bundleID.hasPrefix($0.prefix) }) {
-                return app.localizedName ?? match.name
+            if menuBarManagerBundlePrefixes.contains(where: { bundleID.hasPrefix($0) }) {
+                return app.localizedName
             }
         }
         return nil

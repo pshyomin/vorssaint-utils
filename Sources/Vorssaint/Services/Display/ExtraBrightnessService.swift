@@ -58,13 +58,26 @@ final class ExtraBrightnessService: ObservableObject {
 
     // MARK: - Detection
 
+    /// The Mac's model identifier (for example Mac16,1), the primary signal
+    /// for a real XDR panel: names and headroom values from NSScreen proved
+    /// unreliable across machines and macOS versions.
+    private static let modelIdentifier: String? = {
+        var size = 0
+        guard sysctlbyname("hw.model", nil, &size, nil, 0) == 0, size > 0 else { return nil }
+        var buffer = [CChar](repeating: 0, count: size)
+        guard sysctlbyname("hw.model", &buffer, &size, nil, 0) == 0 else { return nil }
+        return String(cString: buffer)
+    }()
+
     private static func builtInXDRScreen() -> NSScreen? {
         NSScreen.screens.first { screen in
             guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
             else { return false }
             return CGDisplayIsBuiltin(number.uint32Value) != 0
-                && ExtraBrightnessSupport.isXDRPanelName(screen.localizedName)
-                && screen.maximumPotentialExtendedDynamicRangeColorComponentValue > 1.0
+                && ExtraBrightnessSupport.isSupportedPanel(
+                    model: modelIdentifier,
+                    localizedName: screen.localizedName,
+                    potentialEDR: Double(screen.maximumPotentialExtendedDynamicRangeColorComponentValue))
         }
     }
 
@@ -240,7 +253,9 @@ final class ExtraBrightnessService: ObservableObject {
         guard let screen = Self.builtInXDRScreen(), overlayLayer != nil else { return }
         let level = Double(UserDefaults.standard.integer(forKey: DefaultsKey.extraBrightnessLevel)) / 100.0
         let headroom = Double(screen.maximumExtendedDynamicRangeColorComponentValue)
-        let factor = ExtraBrightnessSupport.renderFactor(level: level, currentEDR: headroom)
+        let potential = Double(screen.maximumPotentialExtendedDynamicRangeColorComponentValue)
+        let factor = ExtraBrightnessSupport.renderFactor(level: level, currentEDR: headroom,
+                                                         potentialEDR: potential)
         let engaged = headroom > ExtraBrightnessSupport.headroomThreshold
         guard !engaged || abs(factor - renderedFactor) > 0.005 else { return }
         render(factor: factor)

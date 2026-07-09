@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.10] - 2026-07-09
+
+### Summary
+Vorssaint 3.1.10 fixes extra brightness, which showed as unavailable on
+the MacBook Pro models it was made for.
+
+### Fixed
+- Extra brightness is now available on every MacBook Pro with an XDR
+  display. It stayed marked as unavailable on those Macs.
+
 ## [3.1.9] - 2026-07-08
 
 ### Summary

@@ -420,6 +420,9 @@ struct EnergySettings: View {
             keepAwakeIconTint = Defaults.sanitizedKeepAwakeIconTint(keepAwakeIconTint).rawValue
             keepAwakeMouseJiggleInterval = Defaults.sanitizedKeepAwakeMouseJiggleInterval(keepAwakeMouseJiggleInterval)
             awake.refreshPasswordlessStatus()
+            // Displays may have changed since launch (docked, clamshell);
+            // re-check so the section never shows a stale availability.
+            ExtraBrightnessService.shared.syncWithPreferences()
         }
     }
 

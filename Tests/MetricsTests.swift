@@ -776,13 +776,13 @@ struct MetricsTests {
         expect(registeredDefaults[DefaultsKey.updateShowcaseMediaOverride] as? String == "",
                "update showcase media override is empty by default")
         expect(SupportUpdateIntroInfo.releaseVersion == "3.1.8",
-               "support prompt is deliberately pinned to 3.1.8 (owner's call); 3.1.9 does not ask again")
+               "support prompt is deliberately pinned to 3.1.8 (owner's call); 3.1.9 and the 3.1.10 bugfix do not ask again")
         // AppInfo.version falls back to "dev" in this bare harness, so read
         // the plist the shipped app will actually carry. The pin is a
         // per-release decision: this check fails on every version bump so the
         // decision above is made consciously, never by omission.
         let plistVersion = (NSDictionary(contentsOfFile: "Resources/Info.plist")?["CFBundleShortVersionString"] as? String) ?? ""
-        expect(plistVersion == "3.1.9",
+        expect(plistVersion == "3.1.10",
                "bumping the app version requires re-deciding the support prompt pin above")
         expect(registeredDefaults[DefaultsKey.mixerLowerVolumeOnHeadphonesDisconnect] as? Bool == false,
                "headphone disconnect volume lowering is opt-in")
@@ -1024,19 +1024,47 @@ struct MetricsTests {
                "boost factor stays capped even when the panel reports huge headroom")
         expect(ExtraBrightnessSupport.boostFactor(level: 0.5, maxEDR: 0.5) == 1.0,
                "no headroom means no boost regardless of level")
-        expect(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 1.0)
+        expect(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 1.0, potentialEDR: 16.0)
                == ExtraBrightnessSupport.engagementFactor,
                "before the panel engages, the overlay shows only the small engagement boost")
-        expect(abs(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 2.0) - 2.0) < 0.0001,
+        expect(abs(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 2.0, potentialEDR: 16.0) - 2.0) < 0.0001,
                "with full headroom engaged the overlay uses it all at full level")
-        expect(ExtraBrightnessSupport.renderFactor(level: 0, currentEDR: 2.0) == 1.0,
+        expect(ExtraBrightnessSupport.renderFactor(level: 0, currentEDR: 2.0, potentialEDR: 16.0) == 1.0,
                "zero level renders no boost even with headroom engaged")
+        expect(ExtraBrightnessSupport.renderFactor(level: 1, currentEDR: 1.0, potentialEDR: 1.0) == 1.0,
+               "a mode without any potential headroom gets no boost attempt at all")
+        for model in ["MacBookPro18,1", "MacBookPro18,4", "Mac14,5", "Mac14,10",
+                      "Mac15,3", "Mac15,11", "Mac16,1", "Mac16,7", "Mac17,2", "Mac17,9"] {
+            expect(ExtraBrightnessSupport.isSupportedPanel(model: model,
+                                                           localizedName: "Built-in Retina Display",
+                                                           potentialEDR: 2.0),
+                   "\(model) is a MacBook Pro with an XDR panel, whatever the screen reports")
+        }
+        for model in ["Mac16,12", "Mac16,13", "Mac15,12", "Mac14,2", "Mac14,7",
+                      "Mac17,3", "MacBookPro17,1", "Mac16,2"] {
+            expect(!ExtraBrightnessSupport.isSupportedPanel(model: model,
+                                                            localizedName: "Built-in Retina Display",
+                                                            potentialEDR: 2.0),
+                   "\(model) has no XDR panel and its fake 2x headroom does not qualify")
+        }
+        expect(ExtraBrightnessSupport.isSupportedPanel(model: "Mac99,1",
+                                                       localizedName: "Built-in Display",
+                                                       potentialEDR: 16.0),
+               "future XDR MacBooks qualify by real headroom without a model list update")
+        expect(!ExtraBrightnessSupport.isSupportedPanel(model: nil,
+                                                        localizedName: "Built-in Retina Display",
+                                                        potentialEDR: 1.0),
+               "unknown model without headroom or an XDR name stays unsupported")
+        expect(ExtraBrightnessSupport.isSupportedPanel(model: nil,
+                                                       localizedName: "Liquid Retina XDR Display",
+                                                       potentialEDR: 1.0),
+               "an explicit XDR product name is accepted even without other signals")
         expect(ExtraBrightnessSupport.isXDRPanelName("Built-in Liquid Retina XDR Display")
                && ExtraBrightnessSupport.isXDRPanelName("Liquid Retina XDR"),
-               "MacBook Pro XDR panels are recognized by their product name")
+               "the XDR token is recognized wherever a product name exposes it")
         expect(!ExtraBrightnessSupport.isXDRPanelName("Built-in Liquid Retina Display")
                && !ExtraBrightnessSupport.isXDRPanelName("Built-in Retina Display"),
-               "Air and older panels without true headroom are excluded")
+               "generic built-in panel names do not qualify by name")
         expect(registeredDefaults[DefaultsKey.mediaLastTool] as? String == MediaTool.videoCompressor.rawValue,
                "Media defaults to video compressor")
         expect(registeredDefaults[DefaultsKey.mediaVideoCodec] as? String == MediaVideoCodec.h264.rawValue,
