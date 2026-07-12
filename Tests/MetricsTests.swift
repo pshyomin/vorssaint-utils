@@ -1871,6 +1871,8 @@ struct MetricsTests {
                "Media OCR language defaults include the app language and English")
         expect(MediaSupport.recognitionLanguages(for: "tr") == ["tr-TR", "en-US"],
                "Media OCR language defaults include Turkish and English")
+        expect(MediaSupport.recognitionLanguages(for: "ko") == ["ko-KR", "en-US"],
+               "Media OCR language defaults include Korean and English")
         expectClose(Defaults.sanitizedAppVolume(1.5), 1.5, "valid app volume is preserved")
         expectClose(Defaults.sanitizedAppVolume(3), 2, "high app volume clamps to boost maximum")
         expectClose(Defaults.sanitizedAppVolume(-1), 0, "negative app volume clamps to mute")

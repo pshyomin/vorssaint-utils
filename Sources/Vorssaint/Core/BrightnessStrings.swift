@@ -29,6 +29,7 @@ extension FeatureStrings {
         case .fr: return .fr
         case .it: return .it
         case .ja: return .ja
+        case .ko: return .ko
         case .zhHans: return .zhHans
         case .zhTW: return .zhTW
         case .zhHK: return .zhHK
@@ -134,6 +135,17 @@ extension BrightnessFeatureStrings {
         noDisplays: "調整できるディスプレイが見つかりません。",
         keysToggle: "輝度キーはポインタに従う",
         keysCaption: "キーボードの輝度キーが、ポインタのあるディスプレイを調整します。"
+    )
+
+    static let ko = BrightnessFeatureStrings(
+        pageTitle: "화면 밝기",
+        hubDescription: "모든 디스플레이의 밝기 조절",
+        enable: "디스플레이 밝기 조절",
+        enableCaption: "내장 화면과 외부 모니터의 밝기 슬라이더를 여기와 메뉴 막대 패널에 표시합니다.",
+        externalCaption: "외부 모니터는 자체 버튼과 동일한 프로토콜로 조절됩니다. HDMI 어댑터처럼 연결이 이 프로토콜을 지원하지 않으면 슬라이더가 대신 화면을 어둡게 하므로 어느 경우든 밝기를 조절할 수 있습니다.",
+        noDisplays: "조절할 수 있는 디스플레이를 찾을 수 없습니다.",
+        keysToggle: "밝기 키가 포인터를 따라감",
+        keysCaption: "키보드의 밝기 키로 포인터가 있는 디스플레이를 조절합니다."
     )
 
     static let zhHans = BrightnessFeatureStrings(
