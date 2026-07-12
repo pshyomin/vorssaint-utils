@@ -45,11 +45,41 @@ extension FeatureStrings {
         case .fr: return .fr
         case .it: return .it
         case .ja: return .ja
+        case .ko: return .ko
         case .zhHans: return .zhHans
         case .zhTW: return .zhTW
         case .zhHK: return .zhHK
         }
     }
+}
+
+extension SnippetFeatureStrings {
+    static let ko = SnippetFeatureStrings(
+        pageTitle: "텍스트 스니펫",
+        hubDescription: "짧은 트리거를 전체 텍스트로 확장합니다",
+        enable: "입력 중 스니펫 확장",
+        enableCaption: "어디에서나 트리거를 입력하면 해당 텍스트로 바뀝니다. 모든 내용은 이 Mac에만 남습니다.",
+        addButton: "스니펫 추가",
+        newTitle: "새 스니펫",
+        editTitle: "스니펫 편집",
+        nameLabel: "이름",
+        namePlaceholder: "개인 이메일",
+        triggerLabel: "트리거",
+        triggerPlaceholder: ";email",
+        replacementLabel: "텍스트",
+        replacementPlaceholder: "myemail@example.com",
+        expansionLabel: "확장",
+        expansionImmediate: "즉시",
+        expansionDelimiter: "Space, Tab 또는 Return 뒤에",
+        variablesHint: "변수: {{date}}, {{time}}, {{datetime}}, {{clipboard}}",
+        variablesCaption: "확장 시점에 날짜, 시간 및 복사한 텍스트로 바뀝니다.",
+        emptyList: "아직 스니펫이 없습니다. 첫 번째 스니펫을 추가하세요.",
+        duplicateTrigger: "다른 스니펫이 이미 이 트리거를 사용하고 있습니다.",
+        triggerTooShort: "트리거는 2자 이상이어야 합니다.",
+        deleteButton: "삭제",
+        saveButton: "저장",
+        manageButton: "스니펫 관리"
+    )
 }
 
 extension SnippetFeatureStrings {

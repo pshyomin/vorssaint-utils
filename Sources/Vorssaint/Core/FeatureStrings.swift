@@ -15,6 +15,7 @@ enum FeatureStrings {
         case .fr: return .fr
         case .it: return .it
         case .ja: return .ja
+        case .ko: return .ko
         case .zhHans: return .zhHans
         case .zhTW: return .zhTW
         case .zhHK: return .zhHK
@@ -32,6 +33,7 @@ enum FeatureStrings {
         case .fr: return .fr
         case .it: return .it
         case .ja: return .ja
+        case .ko: return .ko
         case .zhHans: return .zhHans
         case .zhTW: return .zhTW
         case .zhHK: return .zhHK
@@ -49,6 +51,7 @@ enum FeatureStrings {
         case .fr: return .fr
         case .it: return .it
         case .ja: return .ja
+        case .ko: return .ko
         case .zhHans: return .zhHans
         case .zhTW: return .zhTW
         case .zhHK: return .zhHK
@@ -66,11 +69,146 @@ enum FeatureStrings {
         case .fr: return .fr
         case .it: return .it
         case .ja: return .ja
+        case .ko: return .ko
         case .zhHans: return .zhHans
         case .zhTW: return .zhTW
         case .zhHK: return .zhHK
         }
     }
+}
+
+extension SettingsCategoryStrings {
+    static let ko = SettingsCategoryStrings(
+        essentials: "기본 기능",
+        windowsControls: "윈도우 및 제어",
+        files: "파일",
+        utilities: "유틸리티",
+        app: "앱"
+    )
+}
+
+extension ClipboardFeatureStrings {
+    static let ko = ClipboardFeatureStrings(
+        title: "클립보드",
+        enable: "클립보드 기록 저장",
+        caption: "복사한 텍스트를 저장하여 나중에 다시 사용할 수 있습니다. 모든 항목은 로컬에 보관되며 언제든 지울 수 있습니다.",
+        localNote: "모든 항목은 이 Mac에만 저장됩니다. 너무 큰 항목은 무시됩니다.",
+        skipSensitive: "민감해 보이는 텍스트 건너뛰기",
+        skipSensitiveCaption: "암호, 토큰, 키처럼 보이는 짧고 공백 없는 문자열을 저장하지 않습니다.",
+        limit: "제한",
+        showInPanel: "패널에 표시",
+        shortcut: "기록 단축키",
+        shortcutCaption: "검색, 고정 항목 및 이전 앱에 붙여넣기 위한 ⌘1~⌘9 단축키가 있는 빠른 윈도우를 엽니다.",
+        shortcutHint: "행을 클릭하면 이전 앱에 붙여넣습니다. ⌘-클릭으로 여러 항목을 선택하고, ⌘C로 붙여넣지 않고 복사합니다.",
+        clickRowShortcut: "행 클릭",
+        commandClickShortcut: "⌘ 클릭",
+        pinned: "고정됨",
+        recent: "최근 항목",
+        pin: "고정",
+        unpin: "고정 해제",
+        clearRecent: "최근 항목 지우기",
+        clearAll: "고정되지 않은 항목 지우기",
+        empty: "저장한 텍스트가 없습니다",
+        disabled: "복사한 텍스트를 저장하려면 기록을 켜세요.",
+        search: "복사한 텍스트 검색",
+        copy: "복사",
+        copied: "복사됨",
+        delete: "항목 삭제",
+        selectMultiple: "묶음에 추가",
+        unselectMultiple: "묶음에서 제거",
+        selectShortcutAction: "선택",
+        pasteSelectedFormat: "%d개 붙여넣기",
+        copySelectedFormat: "%d개 복사",
+        clearSelection: "선택 해제",
+        moveUp: "위로 이동",
+        moveDown: "아래로 이동",
+        noResults: "결과 없음",
+        newestFirst: "최신순",
+        active: "새 텍스트 저장 중",
+        includeImagesFiles: "복사한 이미지와 파일도 저장",
+        includeImagesFilesCaption: "이미지는 기록에 추가되고 파일은 위치 링크로 저장됩니다. 텍스트 항목처럼 고정하고 붙여넣을 수 있습니다.",
+        imageEntryLabel: "이미지",
+        fileCountFormat: "파일 %d개"
+    )
+}
+
+extension WindowLayoutFeatureStrings {
+    static let ko = WindowLayoutFeatureStrings(
+        title: "윈도우 정렬",
+        caption: "활성 윈도우를 화면의 절반, 3등분, 6등분, 모서리, 다른 디스플레이, 중앙 또는 사용 가능한 화면 영역으로 이동합니다.",
+        showInPanel: "패널에 표시",
+        shortcuts: "단축키",
+        shortcutsCaption: "패널을 열지 않고 전역 단축키로 활성 윈도우를 정렬합니다.",
+        permissionCaption: "손쉬운 사용 권한을 사용해 활성 윈도우만 이동합니다.",
+        noWindow: "활성 윈도우를 찾을 수 없습니다.",
+        missingPermission: "윈도우를 이동하려면 손쉬운 사용 권한을 허용하세요.",
+        failed: "이 윈도우를 이동할 수 없습니다.",
+        done: "윈도우를 정렬했습니다.",
+        restored: "윈도우를 복원했습니다.",
+        noRestore: "복원할 이전 정렬이 없습니다.",
+        target: "활성 윈도우",
+        halves: "2등분",
+        thirds: "3등분",
+        sixths: "6등분",
+        corners: "모서리",
+        other: "동작",
+        leftHalf: "왼쪽",
+        rightHalf: "오른쪽",
+        topHalf: "위쪽",
+        bottomHalf: "아래쪽",
+        leftThird: "왼쪽 1/3",
+        centerThird: "가운데 1/3",
+        rightThird: "오른쪽 1/3",
+        leftTwoThirds: "왼쪽 2/3",
+        rightTwoThirds: "오른쪽 2/3",
+        topLeftSixth: "왼쪽 위 1/6",
+        topCenterSixth: "위쪽 가운데 1/6",
+        topRightSixth: "오른쪽 위 1/6",
+        bottomLeftSixth: "왼쪽 아래 1/6",
+        bottomCenterSixth: "아래쪽 가운데 1/6",
+        bottomRightSixth: "오른쪽 아래 1/6",
+        topLeft: "왼쪽 위",
+        topRight: "오른쪽 위",
+        bottomLeft: "왼쪽 아래",
+        bottomRight: "오른쪽 아래",
+        maximize: "최대화",
+        center: "가운데",
+        nextDisplay: "다음 디스플레이",
+        restore: "복원"
+    )
+}
+
+extension MonitorAlertFeatureStrings {
+    static let ko = MonitorAlertFeatureStrings(
+        section: "알림",
+        caption: "기본적으로 꺼져 있습니다. 켜면 모니터가 유의미한 상태가 계속될 때만 경고하고 알림 간격을 지킵니다.",
+        notificationsDenied: "시스템 설정에서 Vorssaint 알림이 꺼져 있어 경고를 표시할 수 없습니다.",
+        cpu: "높은 CPU 사용량",
+        cpuTemperature: "높은 CPU 온도",
+        memory: "위험한 메모리 압력",
+        disk: "부족한 디스크 공간",
+        battery: "낮은 배터리",
+        cpuThreshold: "CPU 사용량",
+        cpuTemperatureThreshold: "온도",
+        diskThreshold: "남은 공간",
+        batteryThreshold: "배터리 잔량",
+        cooldown: "알림 간격",
+        cooldown2: "2분",
+        cooldown5: "5분",
+        cooldown15: "15분",
+        cooldown30: "30분",
+        cooldown60: "1시간",
+        cpuTitle: "높은 CPU 사용량",
+        cpuBodyFormat: "CPU 사용량이 몇 초 동안 %d%%를 넘었습니다.",
+        cpuTemperatureTitle: "CPU 과열",
+        cpuTemperatureBodyFormat: "CPU 온도가 %d °C에 도달했습니다.",
+        memoryTitle: "위험한 메모리",
+        memoryBody: "메모리 압력이 위험 수준에 도달했습니다.",
+        diskTitle: "부족한 디스크 공간",
+        diskBodyFormat: "%@의 여유 공간이 %d%% 미만입니다.",
+        batteryTitle: "낮은 배터리",
+        batteryBodyFormat: "배터리 잔량이 %d%%입니다."
+    )
 }
 
 struct SettingsCategoryStrings {

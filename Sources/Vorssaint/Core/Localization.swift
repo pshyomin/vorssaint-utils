@@ -16,6 +16,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     case fr = "fr"
     case it = "it"
     case ja = "ja"
+    case ko = "ko"
     case zhHans = "zh-Hans"
     case zhTW = "zh-TW"
     case zhHK = "zh-HK"
@@ -34,6 +35,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .fr: return "Français"
         case .it: return "Italiano"
         case .ja: return "日本語"
+        case .ko: return "한국어"
         case .zhHans: return "简体中文"
         case .zhHK: return "繁體中文（香港）"
         case .zhTW: return "繁體中文（台灣）"
@@ -54,7 +56,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
         let matches: [(String, AppLanguage)] = [
             ("pt", .ptBR), ("tr", .tr), ("ru", .ru), ("es", .es), ("de", .de), ("fr", .fr),
-            ("it", .it), ("ja", .ja), ("zh", .zhHans),
+            ("it", .it), ("ja", .ja), ("ko", .ko), ("zh", .zhHans),
         ]
         for (prefix, language) in matches where preferred.hasPrefix(prefix) { return language }
         return .enUS
@@ -81,6 +83,7 @@ final class L10n: ObservableObject {
         case .fr: return .fr
         case .it: return .it
         case .ja: return .ja
+        case .ko: return .ko
         case .zhHans: return .zhHans
         case .zhHK: return .zhHK
         case .zhTW: return .zhTW

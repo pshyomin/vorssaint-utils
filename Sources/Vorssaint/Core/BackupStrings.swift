@@ -30,11 +30,26 @@ extension FeatureStrings {
         case .fr: return .fr
         case .it: return .it
         case .ja: return .ja
+        case .ko: return .ko
         case .zhHans: return .zhHans
         case .zhTW: return .zhTW
         case .zhHK: return .zhHK
         }
     }
+}
+
+extension BackupFeatureStrings {
+    static let ko = BackupFeatureStrings(
+        title: "백업",
+        description: "설정을 다른 Mac으로 옮기세요. 모든 환경설정을 파일로 내보낸 뒤 그곳에서 가져올 수 있습니다. 클립보드 기록, 선반 항목 및 시스템 권한은 이 Mac 밖으로 나가지 않습니다.",
+        exportButton: "설정 내보내기…",
+        importButton: "설정 가져오기…",
+        exported: "백업을 저장했습니다",
+        importConfirmTitle: "이 설정을 가져올까요?",
+        importConfirmBody: "현재 설정이 파일의 설정으로 바뀌고 앱이 다시 시작됩니다. 이 Mac의 다른 항목은 변경되지 않습니다.",
+        importAction: "가져오고 다시 시작",
+        invalidFile: "이 파일은 유효한 Vorssaint 백업이 아닙니다."
+    )
 }
 
 extension BackupFeatureStrings {

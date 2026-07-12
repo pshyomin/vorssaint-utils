@@ -29,11 +29,24 @@ extension FeatureStrings {
         case .fr: return .fr
         case .it: return .it
         case .ja: return .ja
+        case .ko: return .ko
         case .zhHans: return .zhHans
         case .zhTW: return .zhTW
         case .zhHK: return .zhHK
         }
     }
+}
+
+extension PermissionGuideStrings {
+    static let ko = PermissionGuideStrings(
+        title: "한 단계만 남았습니다",
+        stepOpen: "macOS가 시스템 설정의 올바른 목록을 열었습니다.",
+        stepToggle: "그 목록에서 Vorssaint를 켜세요.",
+        stepReturn: "여기로 돌아오세요. 이 카드가 자동으로 확인합니다.",
+        waiting: "권한을 기다리는 중…",
+        granted: "권한이 허용되었습니다!",
+        closeHelp: "닫기"
+    )
 }
 
 extension PermissionGuideStrings {
