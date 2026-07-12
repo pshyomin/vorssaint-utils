@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.13]
+
+### Summary
+Vorssaint 3.1.13 adds brightness control for all your displays, external
+monitors included.
+
+### Added
+- Brightness sliders for the Mac screen and external monitors, in the menu
+  bar panel and in Settings. The keyboard brightness keys can follow the
+  pointer, changing whichever display it is on. Turn it on in Settings
+  under Energy.
+
 ## [3.1.12] - 2026-07-11
 
 ### Highlight
